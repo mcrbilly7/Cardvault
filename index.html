@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Card Vault"/>
+  <meta name="theme-color" content="#007AFF"/>
+  <title>Card Vault</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{height:100%;background:#F5F5F7;-webkit-tap-highlight-color:transparent}
+    #root{min-height:100vh}
+    #loader{position:fixed;inset:0;background:#F5F5F7;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+    .spin{animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    #errdiv{display:none;position:fixed;inset:0;background:#fff;z-index:99999;padding:24px;font-family:monospace;font-size:13px;overflow:auto;white-space:pre-wrap;word-break:break-all}
+  </style>
+</head>
+<body>
+
+  <!-- Loader shown while scripts download -->
+  <div id="loader">
+    <svg class="spin" width="44" height="44" viewBox="0 0 44 44" fill="none">
+      <circle cx="22" cy="22" r="18" stroke="#E5E5EA" stroke-width="4"/>
+      <path d="M22 4 a18 18 0 0 1 18 18" stroke="#007AFF" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <div style="font-size:15px;font-weight:700;color:#1C1C1E;letter-spacing:-.3px">Card Vault</div>
+    <div style="font-size:13px;color:#8E8E93" id="lstatus">Loading libraries...</div>
+  </div>
+
+  <!-- Error display -->
+  <div id="errdiv"></div>
+
+  <!-- React app mounts here -->
+  <div id="root"></div>
+
+  <!-- CDN libraries (loaded first, synchronously) -->
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.development.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js"></script>
+
+  <!-- App JSX source — type=text/plain so browser IGNORES it, we read it manually -->
+  <script type="text/plain" id="appsrc">
+/* ═══════════════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════════════ */
+const SUPER_EMAIL = "noskoshop@gmail.com";
+const SUPER_PASS  = "nosson101";
+const SPORTS  = ["All Sports","Football","Basketball","Baseball","Hockey","Soccer","Golf","Tennis","MMA"];
+const CTYPES  = ["All Types","Rookie","Base","Prospect","Autograph","Patch Auto","Chrome","Prizm","Refractor","Parallel","Gold Parallel","Silver Parallel","Blue Parallel","Red Parallel","Green Parallel","Pink Parallel","Orange Parallel","Purple Parallel","Black Parallel","White Sparkle","Holo","Mojo Refractor","Superfractor","X-Fractor","Atomic Refractor","Insert","Short Print","SSP","Variation","Numbered","Printing Plate","Relic","Jersey","Bat","Patch","Logo Patch"];
+const CONDS   = ["All Conditions","PSA 10","PSA 9","PSA 8","PSA 7","BGS 9.5","BGS 9","SGC 10","CGC 10","Raw - Mint","Raw - Near Mint","Raw - Excellent","Raw - Good","Raw - Fair"];
+const BRANDS  = ["All Brands","Panini Prizm","Topps Chrome","Bowman Chrome","Bowman","Upper Deck","Donruss Optic","Panini Select","Topps","Topps Heritage","Topps Allen & Ginter","Panini National Treasures","Fleer","Score","Stadium Club","O-Pee-Chee","SP Authentic","Exquisite","Contenders","Immaculate","Mosaic","Obsidian","Topps Finest","Leaf","Certified","Absolute","Crown Royale"];
+const PARS    = ["Base","Silver","Gold","Blue","Red","Green","Pink","Orange","Purple","Black","White Sparkle","Hyper","Mojo","Disco","Neon","Aqua","Bronze","Copper","Camo","Flag","Tigers Eye"];
+const SI      = {Football:"🏈",Basketball:"🏀",Baseball:"⚾",Hockey:"🏒",Soccer:"⚽",Golf:"⛳",Tennis:"🎾",MMA:"🥊"};
+const TCLR    = {Football:["#DC2626","#1e3a5f"],Basketball:["#7C3AED","#1D4ED8"],Baseball:["#B91C1C","#1E40AF"],Hockey:["#EA580C","#1e3a5f"]};
+const PSHIM   = {Silver:"linear-gradient(120deg,#94a3b8,#e2e8f0,#94a3b8)",Gold:"linear-gradient(120deg,#92400e,#fbbf24,#d97706,#92400e)",Blue:"linear-gradient(120deg,#1e40af,#3b82f6,#60a5fa,#1e40af)",Red:"linear-gradient(120deg,#7f1d1d,#ef4444,#7f1d1d)",Green:"linear-gradient(120deg,#14532d,#22c55e,#14532d)",Pink:"linear-gradient(120deg,#831843,#ec4899,#831843)",Orange:"linear-gradient(120deg,#7c2d12,#f97316,#7c2d12)",Purple:"linear-gradient(120deg,#4c1d95,#a855f7,#4c1d95)",Black:"linear-gradient(120deg,#0f172a,#334155,#0f172a)",Mojo:"linear-gradient(120deg,#be123c,#7c3aed,#0284c7,#be123c)",Hyper:"linear-gradient(120deg,#be185d,#ec4899,#be185d)",Disco:"linear-gradient(120deg,#065f46,#34d399,#3b82f6,#065f46)"};
+const DS = {darkMode:false,notifications:true,emailAlerts:true,smsAlerts:false,showValues:true,currency:"USD",autoBackup:false,twoFactor:false,profileVisible:true,shareCollection:true,sortDefault:"newest",biometric:false};
+
+const FAQ=[
+  {q:"How do I add a card?",a:"Tap '+ Scan'. Use camera or upload a photo — AI reads player, year, brand, parallel, serial number automatically. Review and tap Add to Vault."},
+  {q:"What is a Parallel?",a:"A parallel is a short-printed variant — Silver Prizm, Gold (/10), Mojo refractors, etc. Rarer and more valuable than base cards."},
+  {q:"What does 'Serialed' mean?",a:"A print run stamped on the card — e.g. '47/99' means only 99 were made. Lower runs are rarer and more valuable."},
+  {q:"How are prices set?",a:"Prices are set by admins based on current eBay market data. When an admin updates a card's value, it applies to that card across all accounts."},
+  {q:"What is PSA / BGS / SGC?",a:"Professional grading companies that authenticate cards on a 1–10 scale. A PSA 10 or BGS 9.5 significantly raises value."},
+  {q:"How does the Leaderboard work?",a:"Real registered users with 'Show on Leaderboard' enabled are ranked by estimated collection value."},
+  {q:"I forgot my password.",a:"Tap 'Forgot password?' on login. The admin will receive a notification and send you a temporary password within 15 minutes."},
+  {q:"How do I enable Dark Mode?",a:"Settings → Display → Dark Mode toggle."},
+  {q:"Can I export my collection?",a:"Yes — tap ↓ in the header to download your full collection as CSV."},
+  {q:"What is biometric sign-in?",a:"Enable it in Settings to log in with Face ID or fingerprint instead of typing your password. Uses your device's built-in security."},
+];
+
+const TOUR=[
+  {icon:"🃏",title:"Welcome to Card Vault",body:"Your AI-powered sports card collection manager. Let's take a quick tour."},
+  {icon:"📸",title:"Scan Cards with AI",body:"Tap Scan to add cards. Use your camera or photo library — AI reads the player, year, brand, parallel, and serial number automatically."},
+  {icon:"📁",title:"Organize with Folders",body:"Create folders by sport, player, or set. Add custom cover photos to each folder."},
+  {icon:"💰",title:"Card Values",body:"Admins set prices based on real eBay market data. Values automatically apply to matching cards in your collection."},
+  {icon:"🏆",title:"Leaderboard",body:"See how your collection ranks against other collectors by estimated total value."},
+  {icon:"🔐",title:"Biometric Sign-In",body:"Enable Face ID or fingerprint sign-in in Settings for quick secure access — just like your banking app."},
+  {icon:"🎉",title:"You're Ready!",body:"Start scanning cards to build your vault. Good luck hunting!"},
+];
+
+/* ═══════════════════════════════════════════════════════════
+   PERSISTENCE
+═══════════════════════════════════════════════════════════ */
+const LS={U:"cv_users_v4",ME:"cv_me_v4",N:"cv_notifs_v4",P:"cv_prices_v4",AR:"cv_adminreq_v4"};
+const lsGet=(k,d)=>{try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch{return d;}};
+const lsSet=(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v));}catch{}};
+
+const SEED_USERS=[{id:"super",email:SUPER_EMAIL,password:SUPER_PASS,name:"Nosson",phone:"",role:"super",adminApproved:true,recovery:"",recoveryType:"email",createdAt:"Jan 2024",settings:{...DS},cards:[],folders:[],wishlist:[]}];
+function initUsers(){const u=lsGet(LS.U,null);if(u&&u.length){if(!u.find(x=>x.role==="super")){return[...SEED_USERS,...u];}return u;}return SEED_USERS;}
+function saveUsers(u){lsSet(LS.U,u);}
+function initMe(users){const d=lsGet(LS.ME,null);if(d)return users.find(u=>u.id===d.id)||null;return null;}
+function saveMe(u){if(u)lsSet(LS.ME,{id:u.id});else localStorage.removeItem(LS.ME);}
+function initNotifs(){return lsGet(LS.N,[]);}
+function saveNotifs(n){lsSet(LS.N,n);}
+function initPrices(){return lsGet(LS.P,{});}
+function savePrices(p){lsSet(LS.P,p);}
+function initAdminReqs(){return lsGet(LS.AR,[]);}
+function saveAdminReqs(r){lsSet(LS.AR,r);}
+
+/* Card price key — player+year+brand+type+parallel */
+function priceKey(card){return[card.player,card.year,card.brand,card.type,card.parallel||"Base"].filter(Boolean).join("|").toLowerCase();}
+
+/* ═══════════════════════════════════════════════════════════
+   UTILS
+═══════════════════════════════════════════════════════════ */
+const tv  = c=>(c||[]).reduce((s,x)=>s+(x.ebayAvg||0),0);
+const topC= c=>(c||[]).length?(c||[]).reduce((b,x)=>(x.ebayAvg||0)>(b.ebayAvg||0)?x:b,(c||[])[0]):null;
+const rc  = s=>{const a=TCLR[s]||["#6d28d9"];return a[Math.floor(Math.random()*a.length)];};
+const uid = ()=>Math.random().toString(36).slice(2,9);
+const gpw = ()=>Math.random().toString(36).slice(2,10).toUpperCase();
+const now = ()=>new Date().toLocaleString();
+const fmt = n=>n>=1000?"$"+(n/1000).toFixed(1)+"k":n?"$"+n:"—";
+const isAdmin=u=>u&&(u.role==="super"||u.role==="admin");
+const isSuper=u=>u&&u.role==="super";
+
+/* ═══════════════════════════════════════════════════════════
+   THEME
+═══════════════════════════════════════════════════════════ */
+const LT={
+  bg:"#F0F0FF",surf:"#FFFFFF",surf2:"#F7F7FF",surf3:"#EEEEF8",bord:"#E0E0F0",
+  tx:"#0A0A1A",tx2:"#44446A",tx3:"#8888AA",
+  acc:"#6C3DFB",acc2:"#8B5CF6",accBg:"rgba(108,61,251,0.1)",accText:"#5B21B6",
+  gold:"#F59E0B",goldBg:"rgba(245,158,11,0.12)",goldText:"#B45309",
+  grn:"#10B981",grnBg:"rgba(16,185,129,0.12)",grnText:"#065F46",
+  red:"#EF4444",redBg:"rgba(239,68,68,0.1)",redText:"#991B1B",
+  nav:"#FFFFFF",
+  sh:"0 2px 12px rgba(108,61,251,0.1),0 1px 3px rgba(0,0,0,0.05)",
+  shHov:"0 8px 30px rgba(108,61,251,0.2)",
+  inp:"#FFFFFF",dark:false,
+  grad:"linear-gradient(135deg,#6C3DFB 0%,#A855F7 60%,#EC4899 100%)",
+  gradBtn:"linear-gradient(135deg,#6C3DFB,#8B5CF6)",
+  gradGold:"linear-gradient(135deg,#F59E0B,#EF4444)",
+  gradGrn:"linear-gradient(135deg,#10B981,#3B82F6)",
+  gradHero:"linear-gradient(135deg,#0F0F2E 0%,#1a0533 40%,#0d1b3e 100%)",
+};
+const DK={
+  bg:"#07070F",surf:"#111122",surf2:"#181830",surf3:"#1E1E3A",bord:"#2A2A4A",
+  tx:"#F0F0FF",tx2:"#9090C0",tx3:"#505080",
+  acc:"#7C5CFC",acc2:"#A78BFA",accBg:"rgba(124,92,252,0.15)",accText:"#C4B5FD",
+  gold:"#FBBF24",goldBg:"rgba(251,191,36,0.12)",goldText:"#FCD34D",
+  grn:"#34D399",grnBg:"rgba(52,211,153,0.12)",grnText:"#6EE7B7",
+  red:"#F87171",redBg:"rgba(248,113,113,0.1)",redText:"#FCA5A5",
+  nav:"#111122",
+  sh:"0 2px 12px rgba(0,0,0,0.5),0 1px 3px rgba(0,0,0,0.3)",
+  shHov:"0 8px 30px rgba(124,92,252,0.3)",
+  inp:"#1E1E3A",dark:true,
+  grad:"linear-gradient(135deg,#7C5CFC 0%,#A855F7 60%,#EC4899 100%)",
+  gradBtn:"linear-gradient(135deg,#7C5CFC,#A78BFA)",
+  gradGold:"linear-gradient(135deg,#FBBF24,#F87171)",
+  gradGrn:"linear-gradient(135deg,#34D399,#60A5FA)",
+  gradHero:"linear-gradient(135deg,#07070F 0%,#120728 40%,#07101F 100%)",
+};
+
+/* ═══════════════════════════════════════════════════════════
+   PRIMITIVE COMPONENTS
+═══════════════════════════════════════════════════════════ */
+const Av=({name,size=36})=>{
+  const l=(name||"?")[0].toUpperCase();
+  const cols=["#6C3DFB","#EC4899","#10B981","#F59E0B","#EF4444","#3B82F6","#8B5CF6","#06B6D4"];
+  return <div style={{width:size,height:size,borderRadius:"50%",background:cols[l.charCodeAt(0)%cols.length],display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:800,fontSize:size*.38,flexShrink:0}}>{l}</div>;
+};
+
+function Btn({children,onClick,v="fill",sz="md",t,sx={},disabled}){
+  const sizes={sm:{padding:"7px 16px",fontSize:12,borderRadius:10},md:{padding:"11px 22px",fontSize:14,borderRadius:12},lg:{padding:"14px 28px",fontSize:15,borderRadius:13},full:{padding:"14px",fontSize:15,borderRadius:13,width:"100%"}};
+  const vars={
+    fill:{background:t.gradBtn,color:"#fff",border:"none",boxShadow:"0 4px 16px rgba(108,61,251,0.4)"},
+    soft:{background:t.accBg,color:t.acc,border:"none"},
+    ghost:{background:"transparent",color:t.tx2,border:"1.5px solid "+t.bord},
+    gold:{background:t.gradGold,color:"#fff",border:"none",boxShadow:"0 4px 16px rgba(245,158,11,0.35)"},
+    grn:{background:t.gradGrn,color:"#fff",border:"none",boxShadow:"0 4px 16px rgba(16,185,129,0.35)"},
+    red:{background:t.red,color:"#fff",border:"none"},
+    dark:{background:t.surf3,color:t.tx2,border:"1.5px solid "+t.bord},
+  };
+  return <button onClick={disabled?undefined:onClick} style={{...sizes[sz],...vars[v],fontWeight:700,cursor:disabled?"not-allowed":"pointer",opacity:disabled?.5:1,fontFamily:"inherit",transition:"all .15s",...sx}}>{children}</button>;
+}
+
+function Card({children,t,sx={},onClick,glow}){
+  const[hov,setHov]=useState(false);
+  return <div onClick={onClick} onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)} style={{background:t.surf,border:"1px solid "+t.bord,borderRadius:18,boxShadow:glow||(hov&&onClick)?t.shHov:t.sh,transition:"all .2s",...sx,cursor:onClick?"pointer":"default"}}>{children}</div>;
+}
+
+function Sw({on,toggle,t}){return <div onClick={toggle} style={{width:50,height:28,borderRadius:14,background:on?t.acc:t.bord,cursor:"pointer",position:"relative",transition:"all .25s",flexShrink:0}}><div style={{width:24,height:24,borderRadius:12,background:"#fff",position:"absolute",top:2,left:on?24:2,transition:"left .25s",boxShadow:"0 2px 8px rgba(0,0,0,.25)"}}/></div>;}
+
+function Inp({label,value,onChange,type="text",placeholder,t,sx={},disabled,onEnter}){
+  return(
+    <div style={sx}>
+      {label&&<div style={{fontSize:11,fontWeight:700,color:t.tx3,marginBottom:5,letterSpacing:.5}}>{label.toUpperCase()}</div>}
+      <input type={type} value={value||""} onChange={e=>onChange(e.target.value)} placeholder={placeholder} disabled={disabled}
+        onKeyDown={e=>{if(e.key==="Enter"&&onEnter)onEnter();}}
+        style={{width:"100%",padding:"11px 14px",borderRadius:11,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:14,outline:"none",boxSizing:"border-box",fontFamily:"inherit",transition:"border .15s",opacity:disabled?.6:1}}
+        onFocus={e=>e.target.style.borderColor=t.acc} onBlur={e=>e.target.style.borderColor=t.bord}/>
+    </div>
+  );
+}
+function Sel({label,value,onChange,opts,t,sx={}}){
+  return(
+    <div style={sx}>
+      {label&&<div style={{fontSize:11,fontWeight:700,color:t.tx3,marginBottom:5,letterSpacing:.5}}>{label.toUpperCase()}</div>}
+      <select value={value||""} onChange={e=>onChange(e.target.value)} style={{width:"100%",padding:"11px 14px",borderRadius:11,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:14,outline:"none",appearance:"none",fontFamily:"inherit",boxSizing:"border-box",cursor:"pointer"}}>
+        {opts.map(o=><option key={o} value={o}>{o}</option>)}
+      </select>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CARD VISUAL
+═══════════════════════════════════════════════════════════ */
+function CardArt({card,sm}){
+  const isP=card.parallel&&card.parallel!=="Base";
+  const bg=isP&&PSHIM[card.parallel]?PSHIM[card.parallel]:`linear-gradient(150deg,${card.color||"#6C3DFB"}dd,${card.color||"#6C3DFB"}77)`;
+  return(
+    <div style={{width:"100%",height:"100%",background:bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",position:"relative",overflow:"hidden",borderRadius:"inherit"}}>
+      {isP&&<div style={{position:"absolute",inset:0,background:"linear-gradient(45deg,transparent 35%,rgba(255,255,255,.28) 50%,transparent 65%)",backgroundSize:"200% 200%",animation:"shim 2.5s linear infinite"}}/>}
+      <div style={{position:"absolute",inset:0,opacity:.07,background:"repeating-linear-gradient(45deg,#fff 0,#fff 1px,transparent 1px,transparent 8px)"}}/>
+      {card.graded&&!sm&&<div style={{position:"absolute",top:6,left:6,background:"linear-gradient(135deg,#F59E0B,#EF4444)",borderRadius:5,padding:"2px 6px",color:"#fff",fontSize:9,fontWeight:800,letterSpacing:.5}}>{card.grade}</div>}
+      {card.serialed&&!sm&&<div style={{position:"absolute",top:6,right:6,background:"rgba(0,0,0,.7)",borderRadius:4,padding:"1px 5px",color:"#FBBF24",fontSize:8,fontFamily:"monospace"}}>{card.serialNum}</div>}
+      <div style={{fontSize:sm?18:30,marginBottom:sm?2:6}}>{SI[card.sport]||"🃏"}</div>
+      {!sm&&<div style={{color:"rgba(255,255,255,.7)",fontSize:10,fontWeight:500,marginBottom:2,textAlign:"center"}}>{card.year}{card.brand?" · "+card.brand:""}</div>}
+      <div style={{color:"#fff",fontSize:sm?11:15,fontWeight:800,textAlign:"center",lineHeight:1.2,padding:sm?"0 4px":"0 8px",textShadow:"0 1px 4px rgba(0,0,0,.4)"}}>{card.player}</div>
+      {!sm&&<div style={{color:"#FBBF24",fontSize:10,fontWeight:700,marginTop:4}}>{card.type}{isP?" · "+card.parallel:""}</div>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CARD TILE
+═══════════════════════════════════════════════════════════ */
+function CardTile({card,onClick,selMode,selSet,selIds,t}){
+  const[hov,setHov]=useState(false);
+  const isSel=selIds?.has(card.id);
+  const isP=card.parallel&&card.parallel!=="Base";
+  return(
+    <div onClick={()=>selMode?selSet(s=>{const n=new Set(s);n.has(card.id)?n.delete(card.id):n.add(card.id);return n;}):onClick&&onClick(card)}
+      onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)}
+      style={{cursor:"pointer",borderRadius:16,overflow:"hidden",aspectRatio:"2.5/3.5",position:"relative",
+        transform:hov&&!selMode?"translateY(-6px) scale(1.03)":"none",transition:"all .2s cubic-bezier(.34,1.56,.64,1)",
+        boxShadow:isSel?"0 0 0 3px "+t.acc+","+t.shHov:hov?t.shHov:t.sh}}>
+      {card.image?<img src={card.image} alt={card.player} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<CardArt card={card}/>}
+      {isP&&<div style={{position:"absolute",top:0,left:0,right:0,height:3,background:PSHIM[card.parallel]||t.gold}}/>}
+      <div style={{position:"absolute",bottom:0,left:0,right:0,padding:"20px 9px 8px",background:"linear-gradient(transparent,rgba(0,0,0,.9))"}}>
+        <div style={{color:"#fff",fontSize:11,fontWeight:700,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{card.player}</div>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:1}}>
+          <div style={{color:card.graded?"#34D399":card.type==="Rookie"?"#FBBF24":"rgba(255,255,255,.5)",fontSize:9,fontWeight:600}}>{card.graded?card.grade:(card.condition||"").replace("Raw - "," ")}</div>
+          {card.ebayAvg&&<div style={{color:"#FBBF24",fontSize:9,fontWeight:800}}>{fmt(card.ebayAvg)}</div>}
+        </div>
+      </div>
+      {selMode&&<div style={{position:"absolute",top:8,right:8,width:22,height:22,borderRadius:11,border:"2.5px solid "+t.acc,background:isSel?t.acc:"rgba(255,255,255,.9)",display:"flex",alignItems:"center",justifyContent:"center"}}>{isSel&&<span style={{color:"#fff",fontSize:13,fontWeight:900}}>✓</span>}</div>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   PWA INSTALL BANNER + BUTTON
+═══════════════════════════════════════════════════════════ */
+// Store the install prompt globally so any component can trigger it
+let _installPrompt = null;
+
+function InstallBanner({t}){
+  const[show,setShow]=useState(false);
+  const[dismissed,setDismissed]=useState(()=>!!localStorage.getItem("cv_install_dismissed"));
+  useEffect(()=>{
+    const h=e=>{e.preventDefault();_installPrompt=e;if(!dismissed)setShow(true);};
+    window.addEventListener("beforeinstallprompt",h);
+    window.addEventListener("appinstalled",()=>{setShow(false);_installPrompt=null;});
+    return()=>window.removeEventListener("beforeinstallprompt",h);
+  },[dismissed]);
+  if(!show||dismissed)return null;
+  const install=async()=>{
+    if(!_installPrompt)return;
+    _installPrompt.prompt();
+    const{outcome}=await _installPrompt.userChoice;
+    if(outcome==="accepted"){setShow(false);_installPrompt=null;}
+  };
+  const dismiss=()=>{setShow(false);setDismissed(true);localStorage.setItem("cv_install_dismissed","1");};
+  return(
+    <div style={{position:"fixed",bottom:90,left:16,right:16,zIndex:8000,background:t.gradBtn,borderRadius:18,padding:"16px 18px",display:"flex",gap:14,alignItems:"center",boxShadow:"0 8px 32px rgba(108,61,251,.45)",animation:"slideUp .4s ease"}}>
+      <div style={{fontSize:32,flexShrink:0}}>📲</div>
+      <div style={{flex:1}}>
+        <div style={{color:"#fff",fontWeight:800,fontSize:15,marginBottom:2}}>Install Card Vault</div>
+        <div style={{color:"rgba(255,255,255,.8)",fontSize:12}}>Add to your home screen</div>
+      </div>
+      <div style={{display:"flex",gap:8,flexShrink:0}}>
+        <button onClick={install} style={{background:"#fff",color:t.acc,border:"none",borderRadius:10,padding:"8px 14px",fontWeight:700,fontSize:13,cursor:"pointer"}}>Install</button>
+        <button onClick={dismiss} style={{background:"rgba(255,255,255,.15)",color:"#fff",border:"none",borderRadius:10,padding:"8px",cursor:"pointer",fontSize:16,lineHeight:1}}>×</button>
+      </div>
+    </div>
+  );
+}
+
+function InstallButton({t}){
+  const[canInstall,setCanInstall]=useState(false);
+  const[showInstructions,setShowInstructions]=useState(false);
+  const[installed,setInstalled]=useState(false);
+
+  useEffect(()=>{
+    const h=e=>{e.preventDefault();_installPrompt=e;setCanInstall(true);};
+    window.addEventListener("beforeinstallprompt",h);
+    window.addEventListener("appinstalled",()=>{setInstalled(true);setCanInstall(false);});
+    return()=>window.removeEventListener("beforeinstallprompt",h);
+  },[]);
+
+  if(installed)return null;
+
+  const doInstall=async()=>{
+    if(_installPrompt){
+      _installPrompt.prompt();
+      const{outcome}=await _installPrompt.userChoice;
+      if(outcome==="accepted"){_installPrompt=null;setCanInstall(false);}
+    } else {
+      setShowInstructions(true);
+    }
+  };
+
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isSafari=/safari/i.test(navigator.userAgent)&&!/chrome/i.test(navigator.userAgent);
+
+  return(
+    <>
+      <button onClick={doInstall} title="Install App" style={{background:t.surf2,border:"1px solid "+t.bord,color:canInstall?t.acc:t.tx2,borderRadius:10,padding:"7px 10px",cursor:"pointer",fontSize:14}}>
+        📲
+      </button>
+      {showInstructions&&(
+        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:9000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={()=>setShowInstructions(false)}>
+          <div onClick={e=>e.stopPropagation()} style={{background:t.surf,borderRadius:"24px 24px 0 0",padding:28,width:"100%",maxWidth:480,boxShadow:t.shHov}}>
+            <div style={{fontSize:18,fontWeight:900,color:t.tx,marginBottom:16,letterSpacing:-.3}}>📲 Add to Home Screen</div>
+            {(isIOS||isSafari)?<>
+              <div style={{color:t.tx2,fontSize:14,lineHeight:1.8,marginBottom:16}}>
+                <div style={{marginBottom:8}}>On iPhone / Safari:</div>
+                <div style={{background:t.surf2,borderRadius:12,padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
+                  <div>1. Tap the <strong style={{color:t.acc}}>Share button</strong> <span style={{fontSize:16}}>⬆️</span> at the bottom of Safari</div>
+                  <div>2. Scroll down and tap <strong style={{color:t.acc}}>"Add to Home Screen"</strong></div>
+                  <div>3. Tap <strong style={{color:t.acc}}>"Add"</strong> in the top right</div>
+                </div>
+              </div>
+            </>:<>
+              <div style={{color:t.tx2,fontSize:14,lineHeight:1.8,marginBottom:16}}>
+                <div style={{marginBottom:8}}>On Android Chrome:</div>
+                <div style={{background:t.surf2,borderRadius:12,padding:"12px 16px",display:"flex",flexDirection:"column",gap:8}}>
+                  <div>1. Tap the <strong style={{color:t.acc}}>⋮ menu</strong> in the top right</div>
+                  <div>2. Tap <strong style={{color:t.acc}}>"Add to Home screen"</strong></div>
+                  <div>3. Tap <strong style={{color:t.acc}}>"Add"</strong></div>
+                </div>
+              </div>
+            </>}
+            <button onClick={()=>setShowInstructions(false)} style={{width:"100%",padding:"13px",borderRadius:13,background:t.gradBtn,border:"none",color:"#fff",fontWeight:700,fontSize:15,cursor:"pointer"}}>Got it!</button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   BIOMETRIC HELPERS
+═══════════════════════════════════════════════════════════ */
+async function biometricAvailable(){
+  if(!window.PublicKeyCredential)return false;
+  try{return await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();}
+  catch{return false;}
+}
+async function biometricRegister(userId){
+  try{
+    const cred=await navigator.credentials.create({publicKey:{
+      challenge:new Uint8Array(32),rp:{name:"Card Vault",id:location.hostname==="localhost"?"localhost":location.hostname},
+      user:{id:new TextEncoder().encode(userId),name:userId,displayName:"Card Vault User"},
+      pubKeyCredParams:[{alg:-7,type:"public-key"},{alg:-257,type:"public-key"}],
+      authenticatorSelection:{userVerification:"required",authenticatorAttachment:"platform"},
+      timeout:60000,attestation:"none"
+    }});
+    if(cred){lsSet("cv_biometric_id",userId);return true;}
+  }catch(e){console.log("biometric register failed",e);}
+  return false;
+}
+async function biometricAuth(){
+  try{
+    const cred=await navigator.credentials.get({publicKey:{
+      challenge:new Uint8Array(32),rpId:location.hostname==="localhost"?"localhost":location.hostname,
+      userVerification:"required",timeout:60000
+    }});
+    return !!cred;
+  }catch{return false;}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   TOUR MODAL
+═══════════════════════════════════════════════════════════ */
+function TourModal({onDone,t}){
+  const[step,setStep]=useState(0);
+  const s=TOUR[step];
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.7)",zIndex:9999,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}}>
+      <div style={{background:t.surf,borderRadius:"24px 24px 0 0",padding:"32px 28px 40px",width:"100%",maxWidth:480,boxShadow:t.shHov}}>
+        <div style={{textAlign:"center",marginBottom:20}}>
+          <div style={{fontSize:52,marginBottom:12}}>{s.icon}</div>
+          <div style={{fontSize:22,fontWeight:900,color:t.tx,marginBottom:10,letterSpacing:-.5}}>{s.title}</div>
+          <div style={{color:t.tx2,fontSize:15,lineHeight:1.65}}>{s.body}</div>
+        </div>
+        <div style={{display:"flex",justifyContent:"center",gap:6,marginBottom:20}}>
+          {TOUR.map((_,i)=><div key={i} style={{height:4,width:i===step?20:6,borderRadius:2,background:i===step?t.acc:t.bord,transition:"all .3s"}}/>)}
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          {step>0&&<Btn t={t} v="ghost" sz="md" onClick={()=>setStep(s=>s-1)} sx={{flex:1}}>Back</Btn>}
+          <Btn t={t} v="fill" sz="md" onClick={()=>step<TOUR.length-1?setStep(s=>s+1):onDone()} sx={{flex:2}}>{step===TOUR.length-1?"Let's Go! 🚀":"Next →"}</Btn>
+        </div>
+        <button onClick={onDone} style={{display:"block",margin:"14px auto 0",background:"none",border:"none",color:t.tx3,fontSize:13,cursor:"pointer"}}>Skip tour</button>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   AUTH SCREEN
+═══════════════════════════════════════════════════════════ */
+function AuthScreen({users,onLogin,onReg,onForgot,t}){
+  const[mode,setMode]=useState("in");
+  const[f,setF]=useState({email:"",pw:"",name:"",phone:"",rec:"",recType:"email"});
+  const[err,setErr]=useState("");
+  const[fdone,setFdone]=useState(false);
+  const[bioAvail,setBioAvail]=useState(false);
+  const[bioChecking,setBioChecking]=useState(false);
+  const[bioRegistered,setBioRegistered]=useState(false);
+  const upF=(k,v)=>{setF(x=>({...x,[k]:v}));setErr("");};
+
+  useEffect(()=>{
+    biometricAvailable().then(ok=>{
+      setBioAvail(ok);
+      if(ok){const id=lsGet("cv_biometric_id",null);setBioRegistered(!!id);}
+    });
+  },[]);
+
+  const doBio=async()=>{
+    const savedId=lsGet("cv_biometric_id",null);
+    if(!savedId){setErr("No biometric set up. Sign in with password, then enable in Settings.");return;}
+    setBioChecking(true);
+    const ok=await biometricAuth();
+    setBioChecking(false);
+    if(ok){const u=users.find(x=>x.id===savedId);if(u){onLogin(u);return;}setErr("Account not found. Sign in with password.");}
+    else{setErr("Biometric failed. Try your password instead.");}
+  };
+
+  const doIn=()=>{
+    const u=users.find(x=>x.email.toLowerCase()===f.email.toLowerCase()&&x.password===f.pw);
+    if(!u){setErr("Incorrect email or password.");return;}
+    onLogin(u);
+  };
+  const doReg=()=>{
+    if(!f.name.trim()){setErr("Enter your name.");return;}
+    if(!f.email.includes("@")){setErr("Enter a valid email.");return;}
+    if(f.pw.length<6){setErr("Password must be 6+ characters.");return;}
+    if(users.find(x=>x.email.toLowerCase()===f.email.toLowerCase())){setErr("Email already registered.");return;}
+    onReg({id:uid(),email:f.email,password:f.pw,name:f.name,phone:f.phone,role:"user",adminApproved:false,recovery:f.rec||f.email,recoveryType:f.recType,createdAt:new Date().toLocaleDateString(),settings:{...DS},cards:[],folders:[],wishlist:[],isNew:true});
+  };
+  const doForgot=()=>{
+    const u=users.find(x=>x.email.toLowerCase()===f.email.toLowerCase());
+    if(!u){setErr("No account found.");return;}
+    onForgot(u);setFdone(true);
+  };
+
+  return(
+    <div style={{minHeight:"100vh",background:t.gradHero,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,position:"relative",overflow:"hidden"}}>
+      {/* Decorative orbs */}
+      <div style={{position:"absolute",top:"-10%",left:"-10%",width:300,height:300,borderRadius:"50%",background:"rgba(108,61,251,.15)",filter:"blur(60px)",pointerEvents:"none"}}/>
+      <div style={{position:"absolute",bottom:"-10%",right:"-10%",width:400,height:400,borderRadius:"50%",background:"rgba(236,72,153,.1)",filter:"blur(80px)",pointerEvents:"none"}}/>
+
+      <div style={{width:"100%",maxWidth:400,position:"relative",zIndex:1}}>
+        {/* Logo */}
+        <div style={{textAlign:"center",marginBottom:32}}>
+          <div style={{display:"inline-flex",alignItems:"center",gap:12,marginBottom:8}}>
+            <div style={{width:52,height:52,borderRadius:16,background:t.gradBtn,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 8px 24px rgba(108,61,251,.5)"}}>
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+                <rect x="3" y="1.5" width="18" height="25" rx="2.5" stroke="white" strokeWidth="1.8" fill="rgba(255,255,255,0.15)"/>
+                <rect x="6" y="4.5" width="12" height="8" rx="1.5" stroke="white" strokeWidth="1.3" fill="rgba(255,255,255,0.2)"/>
+                <line x1="6" y1="15.5" x2="18" y2="15.5" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
+                <line x1="6" y1="18.5" x2="14" y2="18.5" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
+                <line x1="6" y1="21.5" x2="11" y2="21.5" stroke="white" strokeWidth="1.4" strokeLinecap="round"/>
+                <circle cx="20" cy="21" r="5" fill="#FBBF24"/>
+                <path d="M20 18.5v2.5l1.5 1.5" stroke="white" strokeWidth="1.3" strokeLinecap="round"/>
+              </svg>
+            </div>
+            <div>
+              <div style={{fontSize:28,fontWeight:900,color:"#fff",letterSpacing:-.5,lineHeight:1}}>Card Vault</div>
+              <div style={{color:"rgba(255,255,255,.5)",fontSize:12,letterSpacing:.5}}>Your collection. Your legacy.</div>
+            </div>
+          </div>
+        </div>
+
+        <div style={{background:t.dark?"rgba(255,255,255,.05)":"rgba(255,255,255,.95)",backdropFilter:"blur(20px)",borderRadius:24,padding:28,border:"1px solid "+(t.dark?"rgba(255,255,255,.1)":"rgba(255,255,255,.9)"),boxShadow:"0 20px 60px rgba(0,0,0,.3)"}}>
+
+          {/* Biometric */}
+          {mode==="in"&&bioAvail&&bioRegistered&&(
+            <button onClick={doBio} style={{width:"100%",padding:"14px",borderRadius:14,background:t.dark?"rgba(108,61,251,.2)":t.accBg,border:"1.5px solid "+t.acc,color:t.dark?"#C4B5FD":t.acc,fontWeight:700,fontSize:14,cursor:"pointer",marginBottom:16,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+              {bioChecking?"Verifying...":"🔐 Sign in with Face ID / Fingerprint"}
+            </button>
+          )}
+
+          {mode==="in"&&<>
+            <div style={{fontSize:22,fontWeight:900,color:t.dark?"#fff":t.tx,marginBottom:20,letterSpacing:-.3}}>Welcome back</div>
+            <Inp label="Email" value={f.email} onChange={v=>upF("email",v)} type="email" placeholder="you@example.com" t={t} sx={{marginBottom:12}} onEnter={doIn}/>
+            <Inp label="Password" value={f.pw} onChange={v=>upF("pw",v)} type="password" placeholder="••••••••" t={t} onEnter={doIn}/>
+            {err&&<div style={{marginTop:10,color:t.red,fontSize:13,background:t.redBg,padding:"9px 12px",borderRadius:10,fontWeight:500}}>{err}</div>}
+            <Btn t={t} v="fill" sz="full" onClick={doIn} sx={{marginTop:18,marginBottom:14}}>Sign In</Btn>
+            <div style={{display:"flex",justifyContent:"space-between"}}>
+              <button onClick={()=>{setMode("forgot");setErr("");setFdone(false);}} style={{background:"none",border:"none",color:t.acc,fontSize:13,fontWeight:600,cursor:"pointer"}}>Forgot password?</button>
+              <button onClick={()=>{setMode("up");setErr("");}} style={{background:"none",border:"none",color:t.acc,fontSize:13,fontWeight:600,cursor:"pointer"}}>Create account →</button>
+            </div>
+          </>}
+
+          {mode==="up"&&<>
+            <div style={{fontSize:22,fontWeight:900,color:t.dark?"#fff":t.tx,marginBottom:20,letterSpacing:-.3}}>Create account</div>
+            <Inp label="Full Name" value={f.name} onChange={v=>upF("name",v)} placeholder="Your Name" t={t} sx={{marginBottom:10}}/>
+            <Inp label="Email" value={f.email} onChange={v=>upF("email",v)} type="email" placeholder="you@example.com" t={t} sx={{marginBottom:10}}/>
+            <Inp label="Phone (optional)" value={f.phone} onChange={v=>upF("phone",v)} type="tel" placeholder="+1 555 0000" t={t} sx={{marginBottom:10}}/>
+            <Inp label="Password" value={f.pw} onChange={v=>upF("pw",v)} type="password" placeholder="6+ characters" t={t} sx={{marginBottom:14}}/>
+            <div style={{marginBottom:14}}>
+              <div style={{fontSize:11,fontWeight:700,color:t.dark?"#9090C0":t.tx3,marginBottom:7,letterSpacing:.5}}>RECOVERY METHOD</div>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                {[["email","📧 Email"],["phone","📱 Phone"]].map(([v,l])=>(
+                  <button key={v} onClick={()=>upF("recType",v)} style={{flex:1,padding:"9px",borderRadius:11,border:"1.5px solid "+(f.recType===v?t.acc:t.bord),background:f.recType===v?t.accBg:"transparent",color:f.recType===v?t.acc:t.tx3,fontWeight:600,fontSize:13,cursor:"pointer"}}>{l}</button>
+                ))}
+              </div>
+              <Inp value={f.rec} onChange={v=>upF("rec",v)} placeholder={f.recType==="email"?"backup@email.com":"+1 555 0000"} t={t}/>
+            </div>
+            {err&&<div style={{color:t.red,fontSize:13,background:t.redBg,padding:"9px 12px",borderRadius:10,fontWeight:500,marginBottom:10}}>{err}</div>}
+            <Btn t={t} v="fill" sz="full" onClick={doReg} sx={{marginBottom:12}}>Create Account</Btn>
+            <button onClick={()=>{setMode("in");setErr("");}} style={{background:"none",border:"none",color:t.dark?"#9090C0":t.tx3,fontSize:13,cursor:"pointer",width:"100%"}}>← Back to sign in</button>
+          </>}
+
+          {mode==="forgot"&&<>
+            <div style={{fontSize:22,fontWeight:900,color:t.dark?"#fff":t.tx,marginBottom:8,letterSpacing:-.3}}>Forgot password</div>
+            {!fdone?<>
+              <div style={{color:t.dark?"#9090C0":t.tx2,fontSize:14,lineHeight:1.6,marginBottom:16}}>Enter your email and we'll send a temporary password within 15 minutes.</div>
+              <Inp label="Email" value={f.email} onChange={v=>upF("email",v)} type="email" placeholder="you@example.com" t={t} onEnter={doForgot}/>
+              {err&&<div style={{marginTop:10,color:t.red,fontSize:13,background:t.redBg,padding:"9px 12px",borderRadius:10,fontWeight:500}}>{err}</div>}
+              <Btn t={t} v="fill" sz="full" onClick={doForgot} sx={{marginTop:16,marginBottom:12}}>Send Recovery Password</Btn>
+              <button onClick={()=>{setMode("in");setErr("");}} style={{background:"none",border:"none",color:t.dark?"#9090C0":t.tx3,fontSize:13,cursor:"pointer",width:"100%"}}>← Back</button>
+            </>:<div style={{textAlign:"center",padding:"12px 0"}}>
+              <div style={{fontSize:44,marginBottom:12}}>📬</div>
+              <div style={{fontSize:17,fontWeight:800,color:t.grn,marginBottom:8}}>Request sent!</div>
+              <div style={{color:t.dark?"#9090C0":t.tx2,fontSize:14,lineHeight:1.65,marginBottom:20}}>You'll receive a temporary password within <strong style={{color:t.dark?"#fff":t.tx}}>15 minutes</strong>.</div>
+              <Btn t={t} v="fill" onClick={()=>{setMode("in");setFdone(false);}}>Back to Sign In</Btn>
+            </div>}
+          </>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SCAN MODAL
+═══════════════════════════════════════════════════════════ */
+function ScanModal({onClose,onAdd,folders,t}){
+  const[step,setStep]=useState("choose");
+  const[frontPrev,setFrontPrev]=useState(null);
+  const[backPrev,setBackPrev]=useState(null);
+  const[frontBlob,setFrontBlob]=useState(null);
+  const[backBlob,setBackBlob]=useState(null);
+  const[result,setResult]=useState(null);
+  const[form,setForm]=useState(null);
+  const[camErr,setCamErr]=useState("");
+  const fRef=useRef(),bRef=useRef(),errBRef=useRef(),vidRef=useRef(),canRef=useRef(),strRef=useRef(null);
+
+  useEffect(()=>()=>{strRef.current?.getTracks().forEach(x=>x.stop());},[]);
+  const stopCam=()=>{strRef.current?.getTracks().forEach(x=>x.stop());strRef.current=null;};
+
+  const resizeImg=async file=>new Promise(res=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{
+      const MAX=1200;let w=img.naturalWidth,h=img.naturalHeight;
+      if(w>MAX||h>MAX){if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;}}
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);URL.revokeObjectURL(url);
+      c.toBlob(b=>res(b),"image/jpeg",.85);
+    };img.onerror=()=>res(file);img.src=url;
+  });
+
+  const toB64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(r.result.split(",")[1]);r.onerror=rej;r.readAsDataURL(blob);});
+
+  const startCam=async()=>{
+    setCamErr("");
+    if(location.protocol==="file:"){setCamErr("Camera needs HTTPS. Use Photo Library instead!");return;}
+    if(!navigator.mediaDevices?.getUserMedia){setCamErr("Camera not available. Use Photo Library.");return;}
+    try{
+      const s=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment",width:{ideal:1920}},audio:false});
+      strRef.current=s;setStep("cam");
+      setTimeout(()=>{if(vidRef.current){vidRef.current.srcObject=s;vidRef.current.play().catch(()=>{});}},120);
+    }catch(e){setCamErr(e.name==="NotAllowedError"?"Camera permission denied — use Photo Library.":"Camera unavailable — use Photo Library.");}
+  };
+
+  const capture=()=>{
+    const v=vidRef.current,c=canRef.current;if(!v||!c)return;
+    c.width=v.videoWidth||1280;c.height=v.videoHeight||720;
+    c.getContext("2d").drawImage(v,0,0);
+    c.toBlob(blob=>{stopCam();const url=URL.createObjectURL(blob);setFrontPrev(url);setFrontBlob(blob);doAnalyze(blob,null);},"image/jpeg",.92);
+  };
+
+  const pickFront=async file=>{if(!file)return;const r=await resizeImg(file);setFrontPrev(URL.createObjectURL(r));setFrontBlob(r);};
+  const pickBack =async file=>{if(!file)return;const r=await resizeImg(file);setBackPrev(URL.createObjectURL(r));setBackBlob(r);};
+
+  const doAnalyze=async(fBlob,bBlob)=>{
+    setStep("scan");
+    try{
+      const fB64=await toB64(fBlob);
+      const content=[{type:"image",source:{type:"base64",media_type:"image/jpeg",data:fB64}}];
+      if(bBlob){const bB64=await toB64(bBlob);content.push({type:"image",source:{type:"base64",media_type:"image/jpeg",data:bB64}});content.push({type:"text",text:"Image 1 is FRONT, Image 2 is BACK of a sports card. Use both for accuracy."});}
+      content.push({type:"text",text:`Analyze this sports card. Return ONLY valid JSON:\n{"player":"full name","sport":"Football|Basketball|Baseball|Hockey|Soccer|Golf|Tennis|MMA|Other","year":"4-digit year","brand":"exact brand","type":"Rookie|Base|Prospect|Autograph|Patch Auto|Chrome|Prizm|Refractor|Parallel|Insert|Short Print|Relic|Jersey|Patch|Other","parallel":"Base|Silver|Gold|Blue|Red|Green|Pink|Orange|Purple|Black|Mojo|Hyper|Disco|Neon|Other","team":"team name","condition":"Raw - Mint|Raw - Near Mint|Raw - Excellent|Raw - Good|Raw - Fair","graded":false,"grade":"","serialed":false,"serialNum":"","notes":"serial, parallel info, print run","confidence":"high|medium|low"}\nIf not a sports card: {"error":"not a sports card"}`});
+      const resp=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({content})});
+      if(!resp.ok){const e=await resp.json().catch(()=>({}));throw new Error(e.error||"Server error "+resp.status);}
+      const data=await resp.json();
+      const raw=(data.content||[]).map(x=>x.text||"").join("").trim().replace(/^```[a-z]*\n?/,"").replace(/```$/,"").trim();
+      if(!raw)throw new Error("Empty response");
+      const parsed=JSON.parse(raw);
+      if(parsed.error)throw new Error(parsed.error);
+      setResult(parsed);
+      const formData={player:parsed.player||"",sport:parsed.sport||"Football",year:parsed.year||"",brand:parsed.brand||"",type:parsed.type||"Base",parallel:parsed.parallel||"Base",team:parsed.team||"",condition:parsed.condition||"Raw - Near Mint",graded:!!parsed.graded,grade:parsed.grade||"",serialed:!!parsed.serialed,serialNum:parsed.serialNum||"",notes:parsed.notes||"",folder:null,ebayLow:null,ebayAvg:null};
+      setForm(formData);
+      // Auto-fetch eBay prices in background
+      if(parsed.player&&parsed.year&&parsed.brand){
+        fetch("/api/prices",{method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({player:parsed.player,year:parsed.year,brand:parsed.brand,type:parsed.type||"Base",parallel:parsed.parallel||"Base",serialNum:parsed.serialNum||"",grade:parsed.grade||"",graded:!!parsed.graded,condition:parsed.condition||""})
+        }).then(r=>r.json()).then(p=>{
+          if(p.found&&(p.avgPrice||p.lowPrice)){
+            setForm(f=>({...f,ebayLow:p.lowPrice||null,ebayAvg:p.avgPrice||null,_priceNote:p.note||"",_salesCount:p.salesCount||0,_priceConf:p.confidence||""}));
+          }
+        }).catch(()=>{});
+      }
+    }catch(e){
+      let msg=e.message||"Could not identify card.";
+      if(msg.includes("Failed to fetch")||msg.includes("NetworkError")||msg.includes("Load failed"))msg="Could not reach server. Make sure you're using the Vercel URL.";
+      setResult({_err:msg});
+    }
+    setStep("res");
+  };
+
+  const doAdd=async()=>{
+    if(!form)return;
+    // Convert blob URL to base64 so image persists after page reload
+    let imgData=null;
+    if(frontBlob){
+      imgData=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(frontBlob);});
+    }else if(frontPrev&&frontPrev.startsWith("data:")){
+      imgData=frontPrev;
+    }
+    // Include auto-fetched eBay prices if available
+    onAdd({...form,id:uid(),image:imgData,color:rc(form.sport),ebayLow:form.ebayLow||null,ebayAvg:form.ebayAvg||null});
+    onClose();
+  };
+  const reset=()=>{setStep("choose");setResult(null);setFrontPrev(null);setFrontBlob(null);setBackPrev(null);setBackBlob(null);setCamErr("");};
+
+  const Sheet=({children,noClose})=>(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:5000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={noClose?undefined:()=>{stopCam();onClose();}}>
+      <div onClick={e=>e.stopPropagation()} style={{background:t.surf,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:500,border:"1px solid "+t.bord,maxHeight:"93vh",overflowY:"auto",boxShadow:t.shHov}}>
+        {children}
+      </div>
+    </div>
+  );
+  const Hdr=({title})=>(
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 20px 4px"}}>
+      <div style={{fontSize:18,fontWeight:900,color:t.tx,letterSpacing:-.3}}>{title}</div>
+      <button onClick={()=>{stopCam();onClose();}} style={{background:t.surf3,border:"none",color:t.tx2,width:32,height:32,borderRadius:16,cursor:"pointer",fontSize:20,lineHeight:"32px",textAlign:"center"}}>×</button>
+    </div>
+  );
+
+  if(step==="choose")return(
+    <Sheet>
+      <Hdr title="Add Card"/>
+      {camErr&&<div style={{margin:"4px 20px 8px",color:t.red,fontSize:13,background:t.redBg,padding:"10px 14px",borderRadius:12,lineHeight:1.55}}>{camErr}</div>}
+      <div style={{padding:"10px 20px 24px",display:"flex",flexDirection:"column",gap:14}}>
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:t.tx,marginBottom:8}}>📋 Front of Card <span style={{color:t.grn,fontWeight:500,fontSize:12}}>(required)</span></div>
+          {frontPrev?(<div style={{display:"flex",gap:10,alignItems:"center",background:t.surf2,borderRadius:14,padding:10}}>
+            <img src={frontPrev} alt="front" style={{width:56,height:78,objectFit:"cover",borderRadius:10,flexShrink:0}}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:700,color:t.grn,marginBottom:4}}>✓ Front photo ready</div>
+              <button onClick={()=>{setFrontPrev(null);setFrontBlob(null);}} style={{background:"none",border:"none",color:t.acc,fontSize:13,cursor:"pointer",padding:0,fontWeight:600}}>Change</button>
+            </div>
+          </div>):(
+            <div style={{display:"flex",gap:8}}>
+              <button onClick={startCam} style={{flex:1,padding:"16px 8px",borderRadius:14,border:"1.5px solid "+t.bord,background:t.surf2,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=t.acc} onMouseLeave={e=>e.currentTarget.style.borderColor=t.bord}>
+                <span style={{fontSize:28}}>📷</span><span style={{fontSize:12,fontWeight:700,color:t.tx}}>Camera</span>
+              </button>
+              <button onClick={()=>fRef.current?.click()} style={{flex:1,padding:"16px 8px",borderRadius:14,border:"1.5px solid "+t.bord,background:t.surf2,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:6,transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=t.acc} onMouseLeave={e=>e.currentTarget.style.borderColor=t.bord}>
+                <span style={{fontSize:28}}>🖼️</span><span style={{fontSize:12,fontWeight:700,color:t.tx}}>Photo Library</span><span style={{fontSize:10,color:t.tx3}}>JPG · PNG · HEIC</span>
+              </button>
+            </div>
+          )}
+        </div>
+        <div>
+          <div style={{fontSize:13,fontWeight:700,color:t.tx,marginBottom:8}}>🔄 Back of Card <span style={{color:t.tx3,fontWeight:400,fontSize:12}}>(optional — improves accuracy)</span></div>
+          {backPrev?(<div style={{display:"flex",gap:10,alignItems:"center",background:t.surf2,borderRadius:14,padding:10}}>
+            <img src={backPrev} alt="back" style={{width:56,height:78,objectFit:"cover",borderRadius:10,flexShrink:0}}/>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:700,color:t.grn,marginBottom:4}}>✓ Back photo ready</div>
+              <button onClick={()=>{setBackPrev(null);setBackBlob(null);}} style={{background:"none",border:"none",color:t.acc,fontSize:13,cursor:"pointer",padding:0,fontWeight:600}}>Change</button>
+            </div>
+          </div>):(
+            <button onClick={()=>bRef.current?.click()} style={{padding:"12px 16px",borderRadius:14,border:"1.5px dashed "+t.bord,background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:10,width:"100%",transition:"all .15s"}} onMouseEnter={e=>e.currentTarget.style.borderColor=t.acc} onMouseLeave={e=>e.currentTarget.style.borderColor=t.bord}>
+              <span style={{fontSize:20,color:t.tx3}}>➕</span>
+              <span style={{fontSize:13,color:t.tx2}}>Add back photo (serials, grading label)</span>
+            </button>
+          )}
+        </div>
+        <input ref={fRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0];if(f)pickFront(f);e.target.value="";}}/>
+        <input ref={bRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files?.[0];if(f)pickBack(f);e.target.value="";}}/>
+        {frontBlob&&<Btn t={t} v="fill" sz="full" onClick={()=>doAnalyze(frontBlob,backBlob)}>{backBlob?"🔍 Analyze Front + Back →":"🔍 Analyze Card →"}</Btn>}
+        <div style={{color:t.tx3,fontSize:12,textAlign:"center",lineHeight:1.6}}>💡 Good lighting + flat surface = best results. Back photo helps with serials.</div>
+      </div>
+    </Sheet>
+  );
+
+  if(step==="cam")return(
+    <Sheet noClose>
+      <Hdr title="Photograph Front"/>
+      <div style={{padding:"0 20px 20px"}}>
+        <div style={{borderRadius:16,overflow:"hidden",background:"#000",position:"relative",aspectRatio:"3/4",marginBottom:14}}>
+          <video ref={vidRef} autoPlay playsInline muted style={{width:"100%",height:"100%",objectFit:"cover",display:"block"}}/>
+          <div style={{position:"absolute",inset:0,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}>
+            <div style={{width:"62%",aspectRatio:"2.5/3.5",border:"2.5px solid rgba(255,255,255,.9)",borderRadius:12,boxShadow:"0 0 0 2000px rgba(0,0,0,.45)",position:"relative"}}>
+              <div style={{position:"absolute",top:-26,left:"50%",transform:"translateX(-50%)",color:"#fff",fontSize:11,fontWeight:600,background:"rgba(0,0,0,.6)",padding:"3px 10px",borderRadius:10,whiteSpace:"nowrap"}}>Fit card in frame</div>
+            </div>
+          </div>
+        </div>
+        <canvas ref={canRef} style={{display:"none"}}/>
+        <div style={{display:"flex",gap:10}}>
+          <Btn t={t} v="ghost" onClick={()=>{stopCam();setStep("choose");}} sx={{flex:1}}>Back</Btn>
+          <Btn t={t} v="fill" sz="lg" onClick={capture} sx={{flex:2}}>📸 Capture</Btn>
+        </div>
+      </div>
+    </Sheet>
+  );
+
+  if(step==="scan")return(
+    <Sheet noClose>
+      <div style={{textAlign:"center",padding:"44px 24px"}}>
+        <div style={{display:"flex",gap:10,justifyContent:"center",marginBottom:22}}>
+          {frontPrev&&<img src={frontPrev} alt="" style={{width:72,height:100,objectFit:"cover",borderRadius:12,boxShadow:t.sh}}/>}
+          {backPrev&&<img src={backPrev} alt="" style={{width:72,height:100,objectFit:"cover",borderRadius:12,boxShadow:t.sh,opacity:.8}}/>}
+        </div>
+        <div style={{fontSize:17,fontWeight:700,color:t.tx,marginBottom:6}}>{backPrev?"Reading both sides...":"Reading card..."}</div>
+        <div style={{color:t.tx3,fontSize:13,marginBottom:24}}>AI identifying player, parallel, serial number</div>
+        <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+          {[0,1,2].map(i=>{const a="pulse 1.2s "+(i*.4)+"s infinite";return <div key={i} style={{width:10,height:10,borderRadius:"50%",background:t.acc,animation:a}}/>;})}</div>
+      </div>
+    </Sheet>
+  );
+
+  if(step==="res"&&result?._err)return(
+    <Sheet>
+      <div style={{textAlign:"center",padding:"40px 24px"}}>
+        <div style={{fontSize:48,marginBottom:12}}>🚫</div>
+        <div style={{fontSize:18,fontWeight:800,color:t.tx,marginBottom:8}}>Couldn't Read Card</div>
+        <div style={{color:t.tx2,fontSize:14,lineHeight:1.65,marginBottom:22}}>{result._err}</div>
+        <div style={{display:"flex",gap:10,justifyContent:"center",flexWrap:"wrap"}}>
+          <Btn t={t} v="ghost" onClick={reset}>Try Again</Btn>
+          {frontBlob&&!backBlob&&(
+            <>
+              <input id="errBackIn" ref={errBRef} type="file" accept="image/*" style={{display:"none"}} onChange={async e=>{const f=e.target.files?.[0];if(!f)return;e.target.value="";const r=await resizeImg(f);setBackPrev(URL.createObjectURL(r));setBackBlob(r);doAnalyze(frontBlob,r);}}/>
+              <Btn t={t} v="fill" onClick={()=>errBRef.current?.click()}>Add Back Photo →</Btn>
+            </>
+          )}
+        </div>
+        <div style={{marginTop:16,color:t.tx3,fontSize:12,lineHeight:1.6}}>Tips: Good lighting, card flat, no glare.</div>
+      </div>
+    </Sheet>
+  );
+
+  if(step==="res"&&form)return(
+    <Sheet>
+      <Hdr title="Confirm Details"/>
+      <div style={{padding:"0 20px 28px"}}>
+        <div style={{display:"flex",gap:12,background:t.surf2,borderRadius:14,padding:12,marginBottom:16}}>
+          {frontPrev&&<img src={frontPrev} alt="" style={{width:66,height:92,objectFit:"cover",borderRadius:10,flexShrink:0}}/>}
+          <div style={{flex:1}}>
+            <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
+              <span style={{display:"inline-block",padding:"2px 10px",borderRadius:20,background:result.confidence==="high"?t.grnBg:result.confidence==="medium"?t.goldBg:t.redBg,color:result.confidence==="high"?t.grn:result.confidence==="medium"?t.gold:t.red,fontSize:11,fontWeight:700}}>
+                {result.confidence==="high"?"✓ High":result.confidence==="medium"?"~ Medium":"? Low"}
+              </span>
+              {backPrev&&<span style={{display:"inline-block",padding:"2px 10px",borderRadius:20,background:t.grnBg,color:t.grn,fontSize:11,fontWeight:700}}>+ Back used</span>}
+            </div>
+            <div style={{fontSize:18,fontWeight:800,color:t.tx,lineHeight:1.2,marginBottom:4}}>{form.player||"Unknown"}</div>
+            {form.notes&&<div style={{color:t.gold,fontSize:12}}>✦ {form.notes}</div>}
+            {/* Live price display */}
+            <div style={{marginTop:8,padding:"8px 10px",borderRadius:10,background:t.surf3,border:"1px solid "+t.bord}}>
+              {form.ebayAvg?(
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:16}}>💰</span>
+                  <div>
+                    <div style={{fontSize:13,fontWeight:800,color:t.gold}}>Avg ${form.ebayAvg}{form.ebayLow?" · Low $"+form.ebayLow:""}</div>
+                    <div style={{fontSize:11,color:t.tx3}}>{form._salesCount?" "+form._salesCount+" recent sales":""}{form._priceNote?" · "+form._priceNote:""}</div>
+                  </div>
+                </div>
+              ):(
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:12,height:12,borderRadius:"50%",background:t.acc,animation:"pulse 1.2s 0s infinite",flexShrink:0}}/>
+                  <div style={{fontSize:12,color:t.tx3}}>Fetching eBay sold prices...</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:12}}>
+          <Inp label="Player" value={form.player} onChange={v=>setForm(f=>({...f,player:v}))} t={t} sx={{gridColumn:"1/-1"}}/>
+          <Inp label="Year" value={form.year} onChange={v=>setForm(f=>({...f,year:v}))} t={t}/>
+          <Inp label="Team" value={form.team} onChange={v=>setForm(f=>({...f,team:v}))} t={t}/>
+          <Sel label="Sport" value={form.sport} onChange={v=>setForm(f=>({...f,sport:v}))} opts={SPORTS.slice(1)} t={t}/>
+          <Sel label="Brand" value={form.brand} onChange={v=>setForm(f=>({...f,brand:v}))} opts={BRANDS.slice(1)} t={t}/>
+          <Sel label="Type" value={form.type} onChange={v=>setForm(f=>({...f,type:v}))} opts={CTYPES.slice(1)} t={t}/>
+          <Sel label="Parallel" value={form.parallel} onChange={v=>setForm(f=>({...f,parallel:v}))} opts={PARS} t={t}/>
+          <Sel label="Condition" value={form.condition} onChange={v=>setForm(f=>({...f,condition:v}))} opts={CONDS.slice(1)} t={t}/>
+          <Sel label="Folder" value={form.folder||"(none)"} onChange={v=>setForm(f=>({...f,folder:v==="(none)"?null:v}))} opts={["(none)",...folders.map(x=>x.name)]} t={t}/>
+        </div>
+        <div style={{display:"flex",gap:14,marginBottom:14,flexWrap:"wrap",alignItems:"center"}}>
+          {[["graded","Graded"],["serialed","Serialed"]].map(([k,l])=>(
+            <label key={k} style={{display:"flex",alignItems:"center",gap:7,color:t.tx2,fontSize:13,fontWeight:600,cursor:"pointer"}}>
+              <input type="checkbox" checked={form[k]} onChange={e=>setForm(f=>({...f,[k]:e.target.checked}))} style={{accentColor:t.acc,width:15,height:15}}/>{l}
+            </label>
+          ))}
+          {form.graded&&<Inp value={form.grade} onChange={v=>setForm(f=>({...f,grade:v}))} placeholder="PSA 10" t={t} sx={{width:100}}/>}
+          {form.serialed&&<Inp value={form.serialNum} onChange={v=>setForm(f=>({...f,serialNum:v}))} placeholder="47/99" t={t} sx={{width:100}}/>}
+        </div>
+        <div style={{display:"flex",gap:10}}>
+          <Btn t={t} v="ghost" onClick={reset} sx={{flex:1}}>Rescan</Btn>
+          <Btn t={t} v="fill" sz="lg" onClick={doAdd} sx={{flex:2}}>Add to Vault</Btn>
+        </div>
+      </div>
+    </Sheet>
+  );
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CARD DETAIL MODAL
+═══════════════════════════════════════════════════════════ */
+function DetailModal({card,onClose,onUpdate,onDelete,folders,canEditPrice,t}){
+  const[ed,setEd]=useState(false);
+  const[form,setForm]=useState({...card});
+  const isP=card.parallel&&card.parallel!=="Base";
+  const q=encodeURIComponent([card.year,card.player,card.brand,isP?card.parallel:"",card.type,"card"].filter(Boolean).join(" ").trim());
+
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:5000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:t.surf,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:500,border:"1px solid "+t.bord,maxHeight:"92vh",overflowY:"auto",boxShadow:t.shHov}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 20px 4px"}}>
+          <div style={{fontSize:18,fontWeight:900,color:t.tx,letterSpacing:-.3}}>{ed?"Edit Card":"Card Details"}</div>
+          <div style={{display:"flex",gap:8}}>
+            <Btn t={t} v={ed?"ghost":"soft"} sz="sm" onClick={()=>setEd(e=>!e)}>{ed?"Cancel":"✏️ Edit"}</Btn>
+            <button onClick={onClose} style={{background:t.surf3,border:"none",color:t.tx2,width:32,height:32,borderRadius:16,cursor:"pointer",fontSize:20,lineHeight:"32px",textAlign:"center"}}>×</button>
+          </div>
+        </div>
+        <div style={{padding:"14px 20px 28px"}}>
+          {/* Card preview */}
+          <div style={{display:"flex",gap:14,marginBottom:18}}>
+            <div style={{width:100,height:140,borderRadius:14,overflow:"hidden",flexShrink:0,border:isP?"2px solid "+t.gold:"1px solid "+t.bord,boxShadow:t.sh}}>
+              {card.image?<img src={card.image} alt={card.player} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<CardArt card={card}/>}
+            </div>
+            <div style={{flex:1}}>
+              {isP&&<span style={{display:"inline-block",padding:"2px 10px",borderRadius:20,background:t.goldBg,color:t.gold,fontSize:11,fontWeight:700,marginBottom:6}}>{card.parallel} Parallel</span>}
+              <div style={{fontSize:10,fontWeight:700,color:t.tx3,letterSpacing:.5,marginBottom:3}}>{SI[card.sport]} {(card.sport||"").toUpperCase()}</div>
+              <div style={{fontSize:20,fontWeight:900,color:t.tx,lineHeight:1.2,marginBottom:8,letterSpacing:-.3}}>{card.player}</div>
+              {[["Year",card.year],["Brand",card.brand],["Type",card.type],["Team",card.team],["Condition",(card.condition||"").replace("Raw - ","")],card.graded&&["Grade",card.grade],card.serialed&&["Serial",card.serialNum],card.folder&&["Folder","📁 "+card.folder]].filter(Boolean).map(([k,v])=>(
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"2px 0"}}>
+                  <span style={{color:t.tx3,fontSize:12}}>{k}</span><span style={{color:t.tx2,fontSize:12,fontWeight:700}}>{v}</span>
+                </div>
+              ))}
+              {card.notes&&<div style={{marginTop:6,color:t.tx3,fontSize:12,fontStyle:"italic"}}>"{card.notes}"</div>}
+            </div>
+          </div>
+
+          {/* Price section */}
+          <div style={{background:t.surf2,borderRadius:16,padding:"14px 16px",marginBottom:14,border:"1px solid "+t.bord}}>
+            <div style={{fontSize:11,fontWeight:700,color:t.tx3,letterSpacing:.5,marginBottom:10}}>MARKET VALUE</div>
+            {card.ebayAvg?(
+              <div style={{display:"flex",gap:10,textAlign:"center",marginBottom:12}}>
+                <div style={{flex:1}}><div style={{fontSize:22,fontWeight:900,color:t.grn}}>${card.ebayLow||0}</div><div style={{color:t.tx3,fontSize:10,fontWeight:600,marginTop:1}}>LOW / BIN</div></div>
+                <div style={{width:1,background:t.bord}}/>
+                <div style={{flex:1}}><div style={{fontSize:22,fontWeight:900,color:t.gold}}>${card.ebayAvg}</div><div style={{color:t.tx3,fontSize:10,fontWeight:600,marginTop:1}}>AVG VALUE</div></div>
+              </div>
+            ):(
+              <div style={{color:t.tx3,fontSize:13,marginBottom:10,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span>No value set yet</span>
+                {!canEditPrice&&<span style={{fontSize:11,color:t.tx3}}>Set by admins</span>}
+              </div>
+            )}
+            {canEditPrice&&ed&&(
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginTop:8}}>
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,color:t.tx3,marginBottom:5}}>LOW / BIN ($)</div>
+                  <input type="number" value={form.ebayLow||""} onChange={e=>setForm(f=>({...f,ebayLow:e.target.value?Number(e.target.value):null}))} placeholder="45"
+                    style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:14,outline:"none",boxSizing:"border-box"}}
+                    onFocus={e=>e.target.style.borderColor=t.acc} onBlur={e=>e.target.style.borderColor=t.bord}/>
+                </div>
+                <div>
+                  <div style={{fontSize:11,fontWeight:700,color:t.tx3,marginBottom:5}}>AVG VALUE ($)</div>
+                  <input type="number" value={form.ebayAvg||""} onChange={e=>setForm(f=>({...f,ebayAvg:e.target.value?Number(e.target.value):null}))} placeholder="65"
+                    style={{width:"100%",padding:"10px 12px",borderRadius:10,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:14,outline:"none",boxSizing:"border-box"}}
+                    onFocus={e=>e.target.style.borderColor=t.acc} onBlur={e=>e.target.style.borderColor=t.bord}/>
+                </div>
+                <div style={{gridColumn:"1/-1",color:t.tx3,fontSize:11,lineHeight:1.5}}>⚡ This price will automatically apply to all matching cards across all user accounts.</div>
+              </div>
+            )}
+            <div style={{display:"flex",gap:14,justifyContent:"center",marginTop:10}}>
+              <a href={"https://www.ebay.com/sch/i.html?_nkw="+q+"&LH_Sold=1&LH_Complete=1"} target="_blank" rel="noopener noreferrer" style={{color:t.grn,fontSize:13,fontWeight:700,textDecoration:"none"}}>Sold Listings →</a>
+              <a href={"https://www.ebay.com/sch/i.html?_nkw="+q} target="_blank" rel="noopener noreferrer" style={{color:t.acc,fontSize:13,fontWeight:700,textDecoration:"none"}}>Active Listings →</a>
+            </div>
+          </div>
+
+          {/* Edit form */}
+          {ed&&(
+            <div style={{background:t.surf2,borderRadius:16,padding:14,marginBottom:14,border:"1px solid "+t.bord}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+                <Inp label="Player" value={form.player||""} onChange={v=>setForm(f=>({...f,player:v}))} t={t} sx={{gridColumn:"1/-1"}}/>
+                <Inp label="Year" value={form.year||""} onChange={v=>setForm(f=>({...f,year:v}))} t={t}/>
+                <Inp label="Team" value={form.team||""} onChange={v=>setForm(f=>({...f,team:v}))} t={t}/>
+                <Sel label="Parallel" value={form.parallel||"Base"} onChange={v=>setForm(f=>({...f,parallel:v}))} opts={PARS} t={t}/>
+                <Sel label="Condition" value={form.condition||""} onChange={v=>setForm(f=>({...f,condition:v}))} opts={CONDS.slice(1)} t={t}/>
+                <Sel label="Folder" value={form.folder||"(none)"} onChange={v=>setForm(f=>({...f,folder:v==="(none)"?null:v}))} opts={["(none)",...folders.map(x=>x.name)]} t={t} sx={{gridColumn:"1/-1"}}/>
+              </div>
+              <div style={{display:"flex",gap:14,flexWrap:"wrap",alignItems:"center",marginBottom:8}}>
+                {[["graded","Graded"],["serialed","Serialed"]].map(([k,l])=>(
+                  <label key={k} style={{display:"flex",alignItems:"center",gap:7,color:t.tx2,fontSize:13,fontWeight:600,cursor:"pointer"}}>
+                    <input type="checkbox" checked={form[k]||false} onChange={e=>setForm(f=>({...f,[k]:e.target.checked}))} style={{accentColor:t.acc,width:15,height:15}}/>{l}
+                  </label>
+                ))}
+                {form.graded&&<Inp value={form.grade||""} onChange={v=>setForm(f=>({...f,grade:v}))} placeholder="PSA 10" t={t} sx={{width:100}}/>}
+                {form.serialed&&<Inp value={form.serialNum||""} onChange={v=>setForm(f=>({...f,serialNum:v}))} placeholder="47/99" t={t} sx={{width:100}}/>}
+              </div>
+            </div>
+          )}
+
+          <div style={{display:"flex",gap:10}}>
+            <button onClick={()=>{if(window.confirm("Delete this card?"))onDelete(card.id);}} style={{padding:"11px 16px",borderRadius:12,border:"1px solid "+t.red,background:t.redBg,color:t.red,cursor:"pointer",fontSize:14,fontWeight:700}}>Delete</button>
+            {ed?<Btn t={t} v="fill" sz="md" onClick={()=>{onUpdate(form);setEd(false);}} sx={{flex:1}}>Save Changes</Btn>:<Btn t={t} v="ghost" sz="md" onClick={onClose} sx={{flex:1}}>Close</Btn>}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   FOLDER MODAL
+═══════════════════════════════════════════════════════════ */
+function FolderModal({folders,cards,onClose,onCreate,onDelete,onRename,onCover,t}){
+  const[nm,setNm]=useState("");const[ren,setRen]=useState(null);const[rv,setRv]=useState("");
+  const cRef=useRef();const[ct,setCt]=useState(null);
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:5000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:t.surf,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:460,border:"1px solid "+t.bord,maxHeight:"80vh",overflowY:"auto",boxShadow:t.shHov}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 20px 4px"}}>
+          <div style={{fontSize:18,fontWeight:900,color:t.tx,letterSpacing:-.3}}>Folders</div>
+          <button onClick={onClose} style={{background:t.surf3,border:"none",color:t.tx2,width:32,height:32,borderRadius:16,cursor:"pointer",fontSize:20,lineHeight:"32px",textAlign:"center"}}>×</button>
+        </div>
+        <div style={{padding:"12px 20px 28px"}}>
+          <div style={{display:"flex",gap:8,marginBottom:16}}>
+            <input value={nm} onChange={e=>setNm(e.target.value)} placeholder="New folder name…" onKeyDown={e=>{if(e.key==="Enter"&&nm.trim()){onCreate(nm.trim());setNm("");}}}
+              style={{flex:1,padding:"10px 14px",borderRadius:12,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:14,outline:"none"}}
+              onFocus={e=>e.target.style.borderColor=t.acc} onBlur={e=>e.target.style.borderColor=t.bord}/>
+            <Btn t={t} v="fill" sz="sm" onClick={()=>{if(nm.trim()){onCreate(nm.trim());setNm("");}}}>Create</Btn>
+          </div>
+          <input ref={cRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{
+          const file=e.target.files?.[0];
+          if(file&&ct){
+            const r=new FileReader();
+            r.onload=()=>{onCover(ct,r.result);setCt(null);};
+            r.readAsDataURL(file);
+          }
+        }}/>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {folders.length===0&&<div style={{textAlign:"center",padding:"24px 0",color:t.tx3,fontSize:14}}>No folders yet.</div>}
+            {folders.map(f=>{
+              const fc=cards.filter(c=>c.folder===f.name);const fv=fc.reduce((s,c)=>s+(c.ebayAvg||0),0);
+              return(
+                <Card key={f.name} t={t} sx={{padding:12}}>
+                  <div style={{display:"flex",alignItems:"center",gap:10}}>
+                    <div style={{width:48,height:48,borderRadius:12,overflow:"hidden",flexShrink:0,background:t.surf2,cursor:"pointer"}} onClick={()=>{setCt(f.name);cRef.current?.click();}}>
+                      {f.cover?<img src={f.cover} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:24}}>📁</div>}
+                    </div>
+                    {ren===f.name?(
+                      <input autoFocus value={rv} onChange={e=>setRv(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"){onRename(f.name,rv);setRen(null);}if(e.key==="Escape")setRen(null);}}
+                        style={{flex:1,padding:"7px 10px",borderRadius:9,border:"1.5px solid "+t.acc,background:t.inp,color:t.tx,fontSize:13,outline:"none"}}/>
+                    ):(
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:14,fontWeight:700,color:t.tx}}>{f.name}</div>
+                        <div style={{color:t.tx3,fontSize:12,marginTop:1}}>{fc.length} cards · {fv>0?fmt(fv):"$0"}</div>
+                      </div>
+                    )}
+                    <div style={{display:"flex",gap:6}}>
+                      <button onClick={()=>{setRen(f.name);setRv(f.name);}} style={{background:t.surf3,border:"1px solid "+t.bord,borderRadius:9,padding:"5px 9px",cursor:"pointer",fontSize:12,color:t.tx2}}>✏️</button>
+                      <button onClick={()=>{if(window.confirm(`Delete "${f.name}"?`))onDelete(f.name);}} style={{background:t.redBg,border:"1px solid "+t.red+"40",borderRadius:9,padding:"5px 9px",cursor:"pointer",fontSize:12,color:t.red}}>🗑️</button>
+                    </div>
+                  </div>
+                </Card>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   WISHLIST MODAL
+═══════════════════════════════════════════════════════════ */
+function WishlistModal({wl,onClose,onAdd,onDel,t}){
+  const[adding,setAdding]=useState(false);
+  const[form,setForm]=useState({player:"",sport:"Football",year:"",type:"Rookie",parallel:"Base",maxPrice:"",notes:""});
+  return(
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",zIndex:5000,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(4px)"}} onClick={onClose}>
+      <div onClick={e=>e.stopPropagation()} style={{background:t.surf,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:460,border:"1px solid "+t.bord,maxHeight:"85vh",overflowY:"auto",boxShadow:t.shHov}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"20px 20px 4px"}}>
+          <div style={{fontSize:18,fontWeight:900,color:t.tx,letterSpacing:-.3}}>⭐ Wishlist</div>
+          <div style={{display:"flex",gap:8}}>
+            <Btn t={t} v={adding?"ghost":"soft"} sz="sm" onClick={()=>setAdding(a=>!a)}>{adding?"Cancel":"+ Add"}</Btn>
+            <button onClick={onClose} style={{background:t.surf3,border:"none",color:t.tx2,width:32,height:32,borderRadius:16,cursor:"pointer",fontSize:20,lineHeight:"32px",textAlign:"center"}}>×</button>
+          </div>
+        </div>
+        <div style={{padding:"10px 20px 28px"}}>
+          {adding&&<div style={{background:t.surf2,borderRadius:16,padding:14,marginBottom:14,border:"1px solid "+t.bord}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
+              <Inp label="Player" value={form.player} onChange={v=>setForm(f=>({...f,player:v}))} placeholder="Michael Jordan" t={t} sx={{gridColumn:"1/-1"}}/>
+              <Inp label="Year" value={form.year} onChange={v=>setForm(f=>({...f,year:v}))} t={t}/>
+              <Inp label="Budget $" value={form.maxPrice} onChange={v=>setForm(f=>({...f,maxPrice:v}))} t={t}/>
+              <Sel label="Sport" value={form.sport} onChange={v=>setForm(f=>({...f,sport:v}))} opts={SPORTS.slice(1)} t={t}/>
+              <Sel label="Type" value={form.type} onChange={v=>setForm(f=>({...f,type:v}))} opts={CTYPES.slice(1)} t={t}/>
+              <Sel label="Parallel" value={form.parallel} onChange={v=>setForm(f=>({...f,parallel:v}))} opts={PARS} t={t} sx={{gridColumn:"1/-1"}}/>
+            </div>
+            <Btn t={t} v="fill" sz="full" onClick={()=>{if(form.player.trim()){onAdd({...form,id:"w"+uid()});setAdding(false);setForm({player:"",sport:"Football",year:"",type:"Rookie",parallel:"Base",maxPrice:"",notes:""});}}}>Add to Wishlist</Btn>
+          </div>}
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {wl.length===0&&<div style={{textAlign:"center",padding:"32px 0",color:t.tx3,fontSize:14}}>Your wishlist is empty. Track cards you're hunting!</div>}
+            {wl.map(w=>(
+              <Card key={w.id} t={t} sx={{padding:12}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{fontSize:22}}>{SI[w.sport]||"🃏"}</div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:800,color:t.tx}}>{w.player}</div>
+                    <div style={{color:t.tx3,fontSize:12}}>{w.year&&w.year+" · "}{w.type}{w.parallel&&w.parallel!=="Base"?" · "+w.parallel:""}</div>
+                    {w.maxPrice&&<div style={{color:t.grn,fontSize:12,fontWeight:600}}>Budget ≤ ${w.maxPrice}</div>}
+                  </div>
+                  <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                    <a href={"https://www.ebay.com/sch/i.html?_nkw="+encodeURIComponent((w.year||"")+" "+w.player+" "+w.type+" "+(w.parallel!=="Base"?w.parallel:"")+" card")+"&LH_Sold=1"} target="_blank" rel="noopener noreferrer" style={{padding:"5px 10px",borderRadius:9,background:t.grnBg,color:t.grn,fontSize:11,fontWeight:700,textDecoration:"none",textAlign:"center"}}>eBay</a>
+                    <button onClick={()=>onDel(w.id)} style={{padding:"5px 10px",borderRadius:9,background:t.redBg,border:"none",color:t.red,cursor:"pointer",fontSize:11,fontWeight:700}}>Remove</button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SETTINGS PAGE
+═══════════════════════════════════════════════════════════ */
+function SettingsPage({user,onUpdate,onBack,t,isAdminUser}){
+  const[s,setS]=useState({...DS,...user.settings});
+  const[p,setP]=useState({name:user.name||"",email:user.email||"",phone:user.phone||"",rec:user.recovery||"",recType:user.recoveryType||"email"});
+  const[pw,setPw]=useState({cur:"",nw:"",conf:""});
+  const[pwMsg,setPwMsg]=useState("");
+  const[saved,setSaved]=useState(false);
+  const[bioAvail,setBioAvail]=useState(false);
+  const[bioMsg,setBioMsg]=useState("");
+
+  useEffect(()=>{biometricAvailable().then(setBioAvail);},[]);
+
+  const save=()=>{onUpdate({...user,name:p.name,email:p.email,phone:p.phone,recovery:p.rec,recoveryType:p.recType,settings:s});setSaved(true);setTimeout(()=>setSaved(false),2000);};
+  const chPw=()=>{if(pw.cur!==user.password){setPwMsg("Current password incorrect.");return;}if(pw.nw.length<6){setPwMsg("Min 6 characters.");return;}if(pw.nw!==pw.conf){setPwMsg("Passwords don't match.");return;}onUpdate({...user,password:pw.nw});setPwMsg("✓ Password updated");setPw({cur:"",nw:"",conf:""});};
+
+  const setupBio=async()=>{
+    setBioMsg("Setting up biometrics...");
+    const ok=await biometricRegister(user.id);
+    if(ok){setS(x=>({...x,biometric:true}));setBioMsg("✓ Biometric sign-in enabled!");}
+    else{setBioMsg("Setup failed. Try again or check browser permissions.");}
+  };
+  const removeBio=()=>{localStorage.removeItem("cv_biometric_id");setS(x=>({...x,biometric:false}));setBioMsg("Biometric sign-in removed.");};
+
+  const Sec=({title,children})=><div style={{marginBottom:20}}>
+    <div style={{fontSize:11,fontWeight:700,color:t.tx3,letterSpacing:.5,marginBottom:10,paddingLeft:4}}>{title}</div>
+    <Card t={t} sx={{padding:0,overflow:"hidden"}}>
+      {children}
+    </Card>
+  </div>;
+  const Row=({label,sub,children,last})=><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",borderBottom:last?"none":"1px solid "+t.bord}}>
+    <div style={{flex:1,paddingRight:16}}><div style={{fontSize:15,color:t.tx,fontWeight:500}}>{label}</div>{sub&&<div style={{color:t.tx3,fontSize:12,marginTop:1}}>{sub}</div>}</div>
+    {children}
+  </div>;
+  const inp={padding:"7px 10px",borderRadius:9,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:13,outline:"none"};
+
+  return(
+    <div style={{background:t.bg,minHeight:"100vh"}}>
+      <div style={{background:t.nav,borderBottom:"1px solid "+t.bord,padding:"14px 18px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10,boxShadow:t.sh}}>
+        <button onClick={onBack} style={{background:"none",border:"none",color:t.acc,fontSize:16,fontWeight:700,cursor:"pointer"}}>‹ Back</button>
+        <div style={{fontSize:18,fontWeight:900,color:t.tx,letterSpacing:-.3}}>Settings</div>
+      </div>
+      <div style={{maxWidth:540,margin:"0 auto",padding:"20px 16px 80px"}}>
+        <Sec title="PROFILE">
+          <Row label="Name"><input value={p.name} onChange={e=>setP(x=>({...x,name:e.target.value}))} style={{...inp,width:160,textAlign:"right"}}/></Row>
+          <Row label="Email"><input value={p.email} onChange={e=>setP(x=>({...x,email:e.target.value}))} type="email" style={{...inp,width:180,textAlign:"right"}}/></Row>
+          <Row label="Phone"><input value={p.phone} onChange={e=>setP(x=>({...x,phone:e.target.value}))} type="tel" placeholder="+1 555 0000" style={{...inp,width:150,textAlign:"right"}}/></Row>
+          <Row label="Recovery Method">
+            <div style={{display:"flex",gap:6}}>
+              {[["email","Email"],["phone","Phone"]].map(([v,l])=>(
+                <button key={v} onClick={()=>setP(x=>({...x,recType:v}))} style={{padding:"6px 12px",borderRadius:9,border:"1.5px solid "+(p.recType===v?t.acc:t.bord),background:p.recType===v?t.accBg:"transparent",color:p.recType===v?t.acc:t.tx3,fontWeight:600,fontSize:12,cursor:"pointer"}}>{l}</button>
+              ))}
+            </div>
+          </Row>
+          <Row label="Recovery Contact" last><input value={p.rec} onChange={e=>setP(x=>({...x,rec:e.target.value}))} placeholder="backup@email.com" style={{...inp,width:180,textAlign:"right"}}/></Row>
+        </Sec>
+
+        <Sec title="CHANGE PASSWORD">
+          <Row label="Current Password"><input type="password" value={pw.cur} onChange={e=>setPw(x=>({...x,cur:e.target.value}))} style={{...inp,width:150}}/></Row>
+          <Row label="New Password"><input type="password" value={pw.nw} onChange={e=>setPw(x=>({...x,nw:e.target.value}))} style={{...inp,width:150}}/></Row>
+          <Row label="Confirm Password" last><input type="password" value={pw.conf} onChange={e=>setPw(x=>({...x,conf:e.target.value}))} style={{...inp,width:150}}/></Row>
+          {pwMsg&&<div style={{padding:"8px 16px",color:pwMsg.startsWith("✓")?t.grn:t.red,fontSize:13,fontWeight:600}}>{pwMsg}</div>}
+          <div style={{padding:"12px 16px"}}><Btn t={t} v="ghost" sz="sm" onClick={chPw}>Update Password</Btn></div>
+        </Sec>
+
+        {bioAvail&&<Sec title="BIOMETRIC SIGN-IN">
+          <Row label="Face ID / Fingerprint" sub="Sign in like your banking app — quick and secure" last>
+            {s.biometric&&lsGet("cv_biometric_id",null)===user.id?(
+              <Btn t={t} v="red" sz="sm" onClick={removeBio}>Remove</Btn>
+            ):(
+              <Btn t={t} v="fill" sz="sm" onClick={setupBio}>Set Up</Btn>
+            )}
+          </Row>
+          {bioMsg&&<div style={{padding:"8px 16px",color:bioMsg.startsWith("✓")?t.grn:t.tx3,fontSize:13,fontWeight:600}}>{bioMsg}</div>}
+        </Sec>}
+
+        <Sec title="DISPLAY">
+          <Row label="Dark Mode" sub="Switch to dark theme"><Sw on={s.darkMode} toggle={()=>setS(x=>({...x,darkMode:!x.darkMode}))} t={t}/></Row>
+          <Row label="Show Values" sub="Display prices on cards"><Sw on={s.showValues} toggle={()=>setS(x=>({...x,showValues:!x.showValues}))} t={t}/></Row>
+          <Row label="Default Sort" last>
+            <select value={s.sortDefault} onChange={e=>setS(x=>({...x,sortDefault:e.target.value}))} style={{...inp,appearance:"none"}}>
+              <option value="newest">Newest</option><option value="value_hi">Highest Value</option><option value="alpha">A–Z</option><option value="year_new">Newest Year</option>
+            </select>
+          </Row>
+        </Sec>
+
+        <Sec title="NOTIFICATIONS">
+          <Row label="Push Notifications"><Sw on={s.notifications} toggle={()=>setS(x=>({...x,notifications:!x.notifications}))} t={t}/></Row>
+          <Row label="Email Alerts"><Sw on={s.emailAlerts} toggle={()=>setS(x=>({...x,emailAlerts:!x.emailAlerts}))} t={t}/></Row>
+          <Row label="SMS Alerts" last><Sw on={s.smsAlerts} toggle={()=>setS(x=>({...x,smsAlerts:!x.smsAlerts}))} t={t}/></Row>
+        </Sec>
+
+        <Sec title="PRIVACY">
+          <Row label="Show on Leaderboard" sub="Let others see your ranking"><Sw on={s.shareCollection} toggle={()=>setS(x=>({...x,shareCollection:!x.shareCollection}))} t={t}/></Row>
+          <Row label="Public Profile"><Sw on={s.profileVisible} toggle={()=>setS(x=>({...x,profileVisible:!x.profileVisible}))} t={t}/></Row>
+          <Row label="Two-Factor Auth" sub="Extra login security" last><Sw on={s.twoFactor} toggle={()=>setS(x=>({...x,twoFactor:!x.twoFactor}))} t={t}/></Row>
+        </Sec>
+
+        <Btn t={t} v="fill" sz="full" onClick={save}>{saved?"✓ Saved!":"Save All Changes"}</Btn>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   HELP PAGE
+═══════════════════════════════════════════════════════════ */
+function HelpPage({onBack,onTour,onQuestion,user,t}){
+  const[open,setOpen]=useState(null);
+  const[question,setQuestion]=useState("");
+  const[sent,setSent]=useState(false);
+  const submit=()=>{if(!question.trim())return;onQuestion(question.trim(),user?.name||"",user?.email||"");setSent(true);setQuestion("");setTimeout(()=>setSent(false),4000);};
+  return(
+    <div style={{background:t.bg,minHeight:"100vh"}}>
+      <div style={{background:t.nav,borderBottom:"1px solid "+t.bord,padding:"14px 18px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:10,boxShadow:t.sh}}>
+        <button onClick={onBack} style={{background:"none",border:"none",color:t.acc,fontSize:16,fontWeight:700,cursor:"pointer"}}>‹ Back</button>
+        <div style={{fontSize:18,fontWeight:900,color:t.tx,letterSpacing:-.3}}>Help & Support</div>
+      </div>
+      <div style={{maxWidth:560,margin:"0 auto",padding:"20px 16px 80px"}}>
+        <Card t={t} sx={{padding:18,marginBottom:20,background:t.accBg,border:"1px solid "+t.acc+"30"}}>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <div style={{fontSize:32}}>🎓</div>
+            <div style={{flex:1}}><div style={{fontSize:15,fontWeight:800,color:t.acc,marginBottom:2}}>App Tour</div><div style={{color:t.tx2,fontSize:13}}>Replay the walkthrough to learn all features</div></div>
+            <Btn t={t} v="fill" sz="sm" onClick={onTour}>Start Tour</Btn>
+          </div>
+        </Card>
+
+        <Card t={t} sx={{padding:18,marginBottom:20}}>
+          <div style={{fontSize:16,fontWeight:800,color:t.tx,marginBottom:4,letterSpacing:-.2}}>💬 Ask a Question</div>
+          <div style={{color:t.tx3,fontSize:13,marginBottom:14,lineHeight:1.5}}>Can't find your answer below? Send a message to admin and we'll get back to you.</div>
+          {sent?<div style={{background:t.grnBg,borderRadius:12,padding:"14px 16px",display:"flex",alignItems:"center",gap:10}}><div style={{fontSize:22}}>✅</div><div><div style={{fontSize:14,fontWeight:700,color:t.grn}}>Question sent!</div><div style={{color:t.tx2,fontSize:13}}>Admin will review shortly.</div></div></div>:(
+            <>
+              <textarea value={question} onChange={e=>setQuestion(e.target.value)} placeholder="Type your question…" rows={4}
+                style={{width:"100%",padding:"12px 14px",borderRadius:12,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:14,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:"inherit",marginBottom:12}}
+                onFocus={e=>e.target.style.borderColor=t.acc} onBlur={e=>e.target.style.borderColor=t.bord}/>
+              <Btn t={t} v="fill" sz="full" onClick={submit} disabled={!question.trim()}>Send Question</Btn>
+            </>
+          )}
+        </Card>
+
+        <div style={{fontSize:11,fontWeight:700,color:t.tx3,letterSpacing:.5,marginBottom:10,paddingLeft:4}}>FREQUENTLY ASKED QUESTIONS</div>
+        <div style={{display:"flex",flexDirection:"column",gap:6}}>
+          {FAQ.map((item,i)=>(
+            <Card key={i} t={t} sx={{padding:0,overflow:"hidden"}}>
+              <button onClick={()=>setOpen(open===i?null:i)} style={{width:"100%",padding:"14px 16px",background:"none",border:"none",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center",textAlign:"left",gap:10}}>
+                <span style={{color:t.tx,fontSize:14,fontWeight:600,flex:1}}>{item.q}</span>
+                <span style={{color:t.tx3,fontSize:18,transform:open===i?"rotate(180deg)":"none",transition:"transform .2s",display:"block",flexShrink:0}}>⌄</span>
+              </button>
+              {open===i&&<div style={{padding:"0 16px 14px",color:t.tx2,fontSize:14,lineHeight:1.7,borderTop:"1px solid "+t.bord}}><div style={{paddingTop:12}}>{item.a}</div></div>}
+            </Card>
+          ))}
+        </div>
+        <Card t={t} sx={{padding:18,marginTop:20,textAlign:"center"}}>
+          <div style={{fontSize:28,marginBottom:8}}>✉️</div>
+          <div style={{fontSize:15,fontWeight:700,color:t.tx,marginBottom:4}}>Still need help?</div>
+          <a href={"mailto:"+SUPER_EMAIL} style={{color:t.acc,fontWeight:700,fontSize:14,textDecoration:"none"}}>{SUPER_EMAIL}</a>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ADMIN PANEL
+═══════════════════════════════════════════════════════════ */
+function AdminPanel({users,notifs,onBack,onSend,onDismiss,onAnswer,onUpdUser,onUpdAllCards,globalPrices,onSetPrice,adminReqs,onApproveAdmin,onRejectAdmin,t,currentUser}){
+  const[tab,setTab]=useState("pw");
+  const[sel,setSel]=useState(null);
+  const[viewUser,setViewUser]=useState(null);
+  const[editCard,setEditCard]=useState(null);
+  const[editVals,setEditVals]=useState({low:"",avg:""});
+  const[answerDraft,setAnswerDraft]=useState({});
+  const[newAdminEmail,setNewAdminEmail]=useState("");
+  const[adminMsg,setAdminMsg]=useState("");
+
+  const pwNotifs=notifs.filter(n=>n.type==="pw"||!n.type);
+  const qNotifs=notifs.filter(n=>n.type==="question");
+  const unreadPw=pwNotifs.filter(n=>!n.read).length;
+  const unreadQ=qNotifs.filter(n=>!n.read).length;
+  const pendingAdmins=adminReqs.filter(r=>r.status==="pending");
+
+  const saveVal=()=>{
+    if(!viewUser||!editCard)return;
+    const low=editVals.low?Number(editVals.low):editCard.ebayLow;
+    const avg=editVals.avg?Number(editVals.avg):editCard.ebayAvg;
+    // Save to global price registry
+    onSetPrice(editCard,low,avg);
+    // Update this user's card
+    const updCards=(viewUser.cards||[]).map(c=>c.id===editCard.id?{...c,ebayLow:low,ebayAvg:avg}:c);
+    const updUser={...viewUser,cards:updCards};
+    onUpdUser(updUser);
+    setViewUser(updUser);
+    setEditCard(null);setEditVals({low:"",avg:""});
+  };
+
+  const promoteToAdmin=()=>{
+    if(!newAdminEmail.trim()){setAdminMsg("Enter an email.");return;}
+    const u=users.find(x=>x.email.toLowerCase()===newAdminEmail.toLowerCase());
+    if(!u){setAdminMsg("No account with that email.");return;}
+    if(u.role==="super"){setAdminMsg("That's the super admin.");return;}
+    if(u.role==="admin"){setAdminMsg("Already an admin.");return;}
+    onUpdUser({...u,role:"admin",adminApproved:true});
+    setNewAdminEmail("");setAdminMsg("✓ "+u.name+" is now an admin.");
+  };
+  const demoteAdmin=u=>{
+    if(window.confirm(`Remove admin from ${u.name}?`))onUpdUser({...u,role:"user"});
+  };
+
+  // Viewing a user's collection
+  if(viewUser)return(
+    <div style={{background:t.bg,minHeight:"100vh"}}>
+      <div style={{background:t.nav,borderBottom:"1px solid "+t.bord,padding:"14px 18px",display:"flex",alignItems:"center",gap:12,position:"sticky",top:0,zIndex:100,boxShadow:t.sh}}>
+        <button onClick={()=>setViewUser(null)} style={{background:"none",border:"none",color:t.acc,fontSize:16,fontWeight:700,cursor:"pointer"}}>← Users</button>
+        <div style={{flex:1}}>
+          <div style={{fontSize:15,fontWeight:800,color:t.tx}}>{viewUser.name}'s Collection</div>
+          <div style={{color:t.tx3,fontSize:11}}>{(viewUser.cards||[]).length} cards · ${(viewUser.cards||[]).reduce((s,c)=>s+(c.ebayAvg||0),0).toLocaleString()}</div>
+        </div>
+      </div>
+      <div style={{maxWidth:600,margin:"0 auto",padding:"14px 16px 60px"}}>
+        {(viewUser.cards||[]).length===0&&<div style={{textAlign:"center",padding:"60px 20px",color:t.tx3}}>No cards yet.</div>}
+        {(viewUser.cards||[]).map(card=>(
+          <Card key={card.id} t={t} sx={{padding:14,marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <div style={{width:44,height:62,borderRadius:10,overflow:"hidden",flexShrink:0,background:t.surf2}}>
+                {card.image?<img src={card.image} alt={card.player} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<CardArt card={card} sm/>}
+              </div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:14,fontWeight:800,color:t.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{card.player}</div>
+                <div style={{color:t.tx3,fontSize:12}}>{card.year} {card.brand} · {card.type}</div>
+                {card.parallel&&card.parallel!=="Base"&&<div style={{color:t.gold,fontSize:11,fontWeight:600}}>{card.parallel} Parallel</div>}
+              </div>
+              {editCard?.id===card.id?(
+                <div style={{display:"flex",flexDirection:"column",gap:6,width:190}}>
+                  <div style={{display:"flex",gap:6}}>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:10,color:t.tx3,fontWeight:700,marginBottom:2}}>LOW $</div>
+                      <input type="number" value={editVals.low} onChange={e=>setEditVals(v=>({...v,low:e.target.value}))} placeholder={card.ebayLow||"0"}
+                        style={{width:"100%",padding:"7px 8px",borderRadius:9,border:"1.5px solid "+t.acc,background:t.inp,color:t.tx,fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+                    </div>
+                    <div style={{flex:1}}>
+                      <div style={{fontSize:10,color:t.tx3,fontWeight:700,marginBottom:2}}>AVG $</div>
+                      <input type="number" value={editVals.avg} onChange={e=>setEditVals(v=>({...v,avg:e.target.value}))} placeholder={card.ebayAvg||"0"}
+                        style={{width:"100%",padding:"7px 8px",borderRadius:9,border:"1.5px solid "+t.acc,background:t.inp,color:t.tx,fontSize:13,outline:"none",boxSizing:"border-box"}}/>
+                    </div>
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <button onClick={saveVal} style={{flex:2,padding:"7px",borderRadius:9,border:"none",background:t.gradBtn,color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700}}>Save All</button>
+                    <button onClick={()=>{setEditCard(null);setEditVals({low:"",avg:""}); }} style={{flex:1,padding:"7px",borderRadius:9,border:"1px solid "+t.bord,background:"none",color:t.tx2,cursor:"pointer",fontSize:12}}>×</button>
+                  </div>
+                  <div style={{fontSize:10,color:t.acc}}>⚡ Applies to all matching cards</div>
+                </div>
+              ):(
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontSize:16,fontWeight:900,color:card.ebayAvg?t.gold:t.tx3}}>{card.ebayAvg?"$"+card.ebayAvg:"—"}</div>
+                  <button onClick={()=>{setEditCard(card);setEditVals({low:card.ebayLow||"",avg:card.ebayAvg||""});}} style={{marginTop:4,background:t.accBg,border:"none",color:t.acc,padding:"4px 10px",borderRadius:8,cursor:"pointer",fontSize:11,fontWeight:700}}>
+                    {card.ebayAvg?"Edit":"Set Value"}
+                  </button>
+                </div>
+              )}
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+
+  const tabs=[
+    {id:"pw",label:"🔑 Passwords",cnt:unreadPw},
+    {id:"questions",label:"💬 Questions",cnt:unreadQ},
+    {id:"users",label:"👥 Users",cnt:0},
+    ...(isSuper(currentUser)?[{id:"admins",label:"⚡ Admins",cnt:pendingAdmins.length}]:[]),
+  ];
+
+  return(
+    <div style={{background:t.bg,minHeight:"100vh"}}>
+      <div style={{background:t.nav,borderBottom:"1px solid "+t.bord,padding:"14px 18px",display:"flex",justifyContent:"space-between",alignItems:"center",position:"sticky",top:0,zIndex:100,boxShadow:t.sh}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:36,height:36,borderRadius:10,background:t.gradBtn,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>⚡</div>
+          <div><div style={{fontSize:15,fontWeight:900,color:t.tx,letterSpacing:-.2}}>Admin Panel</div><div style={{color:t.tx3,fontSize:11}}>{isSuper(currentUser)?"Super Admin":"Admin"}</div></div>
+        </div>
+        <Btn t={t} v="ghost" sz="sm" onClick={onBack}>‹ My Vault</Btn>
+      </div>
+      <div style={{display:"flex",borderBottom:"1px solid "+t.bord,background:t.nav,overflowX:"auto"}}>
+        {tabs.map(({id,label,cnt})=>(
+          <button key={id} onClick={()=>setTab(id)} style={{flex:1,minWidth:80,padding:"11px 8px",background:"none",border:"none",cursor:"pointer",borderBottom:tab===id?"2.5px solid "+t.acc:"2.5px solid transparent",color:tab===id?t.acc:t.tx3,fontSize:12,fontWeight:700,position:"relative",whiteSpace:"nowrap"}}>
+            {label}{cnt>0&&<span style={{marginLeft:4,background:t.red,borderRadius:10,padding:"1px 5px",fontSize:10,color:"#fff"}}>{cnt}</span>}
+          </button>
+        ))}
+      </div>
+
+      {/* PASSWORD REQUESTS */}
+      {tab==="pw"&&<div style={{maxWidth:580,margin:"0 auto",padding:"16px 16px 40px"}}>
+        {pwNotifs.length===0&&<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:44,marginBottom:12}}>🔔</div><div style={{fontSize:16,fontWeight:700,color:t.tx,marginBottom:6}}>No requests</div><div style={{color:t.tx2,fontSize:13}}>Password recovery requests will appear here.</div></div>}
+        {pwNotifs.map(n=>(
+          <Card key={n.id} t={t} sx={{padding:16,marginBottom:10,border:n.read?"1px solid "+t.bord:"1.5px solid "+t.gold}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                  <span style={{fontSize:14,fontWeight:800,color:t.tx}}>Password Recovery</span>
+                  {!n.read&&<span style={{padding:"1px 7px",borderRadius:10,background:t.goldBg,color:t.gold,fontSize:11,fontWeight:800}}>New</span>}
+                  {n.sent&&<span style={{padding:"1px 7px",borderRadius:10,background:t.grnBg,color:t.grn,fontSize:11,fontWeight:700}}>✓ Sent</span>}
+                </div>
+                <div style={{color:t.tx3,fontSize:12}}>{n.time}</div>
+              </div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,background:t.surf2,borderRadius:12,padding:12,marginBottom:12}}>
+              {[["User",n.userName],["Email",n.userEmail],["Recovery","("+n.recoveryType+") "+n.recovery]].map(([k,v])=>(
+                <div key={k} style={k==="Recovery"?{gridColumn:"1/-1"}:{}}>
+                  <div style={{color:t.tx3,fontSize:10,fontWeight:700,letterSpacing:.5,marginBottom:2}}>{k.toUpperCase()}</div>
+                  <div style={{color:t.tx,fontSize:13,fontWeight:600}}>{v}</div>
+                </div>
+              ))}
+              <div style={{gridColumn:"1/-1",paddingTop:10,marginTop:6,borderTop:"1px solid "+t.bord}}>
+                <div style={{color:t.tx3,fontSize:10,fontWeight:700,letterSpacing:.5,marginBottom:4}}>TEMP PASSWORD TO SEND</div>
+                <div style={{color:t.grn,fontSize:22,fontWeight:900,fontFamily:"'Courier New',monospace",letterSpacing:3}}>{n.tempPass}</div>
+              </div>
+            </div>
+            <div style={{display:"flex",gap:8}}>
+              {!n.sent?<Btn t={t} v="grn" sz="sm" onClick={()=>onSend(n.id)} sx={{flex:2}}>✓ Mark as Sent</Btn>
+                :<div style={{flex:2,padding:"8px 14px",borderRadius:10,background:t.grnBg,color:t.grn,fontSize:13,fontWeight:700,textAlign:"center"}}>✓ Sent</div>}
+              <Btn t={t} v="ghost" sz="sm" onClick={()=>onDismiss(n.id)}>Dismiss</Btn>
+            </div>
+          </Card>
+        ))}
+      </div>}
+
+      {/* QUESTIONS */}
+      {tab==="questions"&&<div style={{maxWidth:580,margin:"0 auto",padding:"16px 16px 40px"}}>
+        {qNotifs.length===0&&<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:44,marginBottom:12}}>💬</div><div style={{fontSize:16,fontWeight:700,color:t.tx,marginBottom:6}}>No questions</div><div style={{color:t.tx2,fontSize:13}}>User questions from the Help page appear here.</div></div>}
+        {qNotifs.map(n=>(
+          <Card key={n.id} t={t} sx={{padding:16,marginBottom:10,border:n.read?"1px solid "+t.bord:"1.5px solid "+t.acc}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:12}}>
+              <div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                  <span style={{fontSize:14,fontWeight:800,color:t.tx}}>User Question</span>
+                  {!n.read&&<span style={{padding:"1px 7px",borderRadius:10,background:t.accBg,color:t.acc,fontSize:11,fontWeight:800}}>New</span>}
+                  {n.answered&&<span style={{padding:"1px 7px",borderRadius:10,background:t.grnBg,color:t.grn,fontSize:11,fontWeight:700}}>✓ Answered</span>}
+                </div>
+                <div style={{color:t.tx3,fontSize:12}}>{n.time}</div>
+              </div>
+            </div>
+            <div style={{background:t.surf2,borderRadius:12,padding:12,marginBottom:12}}>
+              <div style={{color:t.tx3,fontSize:10,fontWeight:700,marginBottom:4}}>FROM</div>
+              <div style={{color:t.tx,fontSize:13,fontWeight:600,marginBottom:10}}>{n.userName} · {n.userEmail}</div>
+              <div style={{color:t.tx3,fontSize:10,fontWeight:700,marginBottom:4}}>QUESTION</div>
+              <div style={{color:t.tx,fontSize:14,lineHeight:1.6}}>{n.question}</div>
+            </div>
+            {!n.answered&&<>
+              <textarea value={answerDraft[n.id]||""} onChange={e=>setAnswerDraft(d=>({...d,[n.id]:e.target.value}))}
+                placeholder="Record your answer (optional — you can also reply directly by email)…" rows={3}
+                style={{width:"100%",padding:"10px 14px",borderRadius:12,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:13,outline:"none",resize:"none",boxSizing:"border-box",fontFamily:"inherit",marginBottom:10}}/>
+              <div style={{display:"flex",gap:8}}>
+                <Btn t={t} v="fill" sz="sm" onClick={()=>{onAnswer(n.id,answerDraft[n.id]||"");}} sx={{flex:2}}>✓ Mark as Answered</Btn>
+                <Btn t={t} v="ghost" sz="sm" onClick={()=>onDismiss(n.id)}>Dismiss</Btn>
+              </div>
+            </>}
+            {n.answered&&<Btn t={t} v="ghost" sz="sm" onClick={()=>onDismiss(n.id)}>Dismiss</Btn>}
+          </Card>
+        ))}
+      </div>}
+
+      {/* USERS */}
+      {tab==="users"&&<div style={{maxWidth:580,margin:"0 auto",padding:"16px 16px 40px"}}>
+        <div style={{fontSize:11,fontWeight:700,color:t.tx3,letterSpacing:.5,marginBottom:12}}>{users.filter(u=>u.role==="user").length} REGISTERED USERS</div>
+        {users.filter(u=>u.role==="user").map(u=>(
+          <Card key={u.id} t={t} sx={{marginBottom:8,padding:0,overflow:"hidden"}}>
+            <div style={{padding:"14px 16px",display:"flex",alignItems:"center",gap:12}}>
+              <Av name={u.name}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:15,fontWeight:800,color:t.tx}}>{u.name}</div>
+                <div style={{color:t.tx3,fontSize:12}}>{u.email}</div>
+                <div style={{color:t.tx3,fontSize:11,marginTop:2}}>{(u.cards||[]).length} cards · <span style={{color:t.gold,fontWeight:700}}>${(u.cards||[]).reduce((s,c)=>s+(c.ebayAvg||0),0).toLocaleString()}</span></div>
+              </div>
+              <button onClick={()=>setViewUser(u)} style={{background:t.accBg,border:"none",color:t.acc,padding:"8px 14px",borderRadius:11,cursor:"pointer",fontSize:13,fontWeight:700,flexShrink:0}}>View →</button>
+            </div>
+            <div onClick={()=>setSel(sel?.id===u.id?null:u)} style={{padding:"8px 16px",borderTop:"1px solid "+t.bord,cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <span style={{color:t.tx3,fontSize:12}}>Account details</span>
+              <span style={{color:t.tx3,fontSize:14,transform:sel?.id===u.id?"rotate(180deg)":"none",transition:"transform .2s",display:"block"}}>⌄</span>
+            </div>
+            {sel?.id===u.id&&<div style={{padding:"0 16px 14px",borderTop:"1px solid "+t.bord}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:10}}>
+                {[["Phone",u.phone||"—"],["Recovery",u.recoveryType||"email"],["Rec. Contact",u.recovery||"—"],["Joined",u.createdAt],["Folders",(u.folders||[]).length],["Wishlist",(u.wishlist||[]).length+" items"],["Leaderboard",u.settings?.shareCollection!==false?"Yes":"No"],["Dark Mode",u.settings?.darkMode?"On":"Off"]].map(([k,v])=>(
+                  <div key={k} style={{background:t.surf2,borderRadius:10,padding:"9px 10px"}}>
+                    <div style={{color:t.tx3,fontSize:10,fontWeight:700,marginBottom:2}}>{k.toUpperCase()}</div>
+                    <div style={{color:t.tx,fontSize:13,fontWeight:700}}>{v}</div>
+                  </div>
+                ))}
+              </div>
+            </div>}
+          </Card>
+        ))}
+        {users.filter(u=>u.role==="user").length===0&&<div style={{textAlign:"center",padding:"60px 20px",color:t.tx3,fontSize:14}}>No users registered yet.</div>}
+      </div>}
+
+      {/* ADMINS (super only) */}
+      {tab==="admins"&&isSuper(currentUser)&&<div style={{maxWidth:580,margin:"0 auto",padding:"16px 16px 40px"}}>
+
+        {/* Promote new admin */}
+        <Card t={t} sx={{padding:18,marginBottom:20}}>
+          <div style={{fontSize:15,fontWeight:800,color:t.tx,marginBottom:4}}>Add New Admin</div>
+          <div style={{color:t.tx3,fontSize:13,marginBottom:14}}>Enter the email of an existing user to promote them to admin. They cannot create other admins without your approval.</div>
+          <div style={{display:"flex",gap:8,marginBottom:10}}>
+            <input value={newAdminEmail} onChange={e=>{setNewAdminEmail(e.target.value);setAdminMsg("");}} placeholder="user@email.com"
+              style={{flex:1,padding:"10px 14px",borderRadius:11,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:14,outline:"none"}}
+              onFocus={e=>e.target.style.borderColor=t.acc} onBlur={e=>e.target.style.borderColor=t.bord}
+              onKeyDown={e=>{if(e.key==="Enter")promoteToAdmin();}}/>
+            <Btn t={t} v="fill" sz="sm" onClick={promoteToAdmin}>Promote</Btn>
+          </div>
+          {adminMsg&&<div style={{color:adminMsg.startsWith("✓")?t.grn:t.red,fontSize:13,fontWeight:600}}>{adminMsg}</div>}
+        </Card>
+
+        {/* Pending admin requests */}
+        {pendingAdmins.length>0&&<>
+          <div style={{fontSize:11,fontWeight:700,color:t.tx3,letterSpacing:.5,marginBottom:10}}>PENDING ADMIN REQUESTS</div>
+          {pendingAdmins.map(r=>(
+            <Card key={r.id} t={t} sx={{padding:16,marginBottom:8,border:"1.5px solid "+t.gold}}>
+              <div style={{fontSize:14,fontWeight:800,color:t.tx,marginBottom:4}}>{r.requestedBy} wants to make {r.targetName} an admin</div>
+              <div style={{color:t.tx3,fontSize:12,marginBottom:12}}>{r.targetEmail} · Requested {r.time}</div>
+              <div style={{display:"flex",gap:8}}>
+                <Btn t={t} v="grn" sz="sm" onClick={()=>onApproveAdmin(r.id)} sx={{flex:1}}>✓ Approve</Btn>
+                <Btn t={t} v="red" sz="sm" onClick={()=>onRejectAdmin(r.id)} sx={{flex:1}}>✗ Reject</Btn>
+              </div>
+            </Card>
+          ))}
+        </>}
+
+        {/* Current admins */}
+        <div style={{fontSize:11,fontWeight:700,color:t.tx3,letterSpacing:.5,marginBottom:10,marginTop:8}}>CURRENT ADMINS</div>
+        {users.filter(u=>u.role==="admin"||u.role==="super").map(u=>(
+          <Card key={u.id} t={t} sx={{padding:14,marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:12}}>
+              <Av name={u.name}/>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:800,color:t.tx}}>{u.name}</div>
+                <div style={{color:t.tx3,fontSize:12}}>{u.email}</div>
+              </div>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <span style={{padding:"3px 10px",borderRadius:20,background:u.role==="super"?t.goldBg:t.accBg,color:u.role==="super"?t.gold:t.acc,fontSize:11,fontWeight:700}}>{u.role==="super"?"Super":"Admin"}</span>
+                {u.role==="admin"&&<button onClick={()=>demoteAdmin(u)} style={{background:t.redBg,border:"1px solid "+t.red+"40",color:t.red,borderRadius:9,padding:"4px 10px",cursor:"pointer",fontSize:11,fontWeight:700}}>Remove</button>}
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   MAIN VAULT APP
+═══════════════════════════════════════════════════════════ */
+function Vault({user,allUsers,onUpdUser,onLogout,onGoAdmin,notifs,theme,setTheme,onQuestion,globalPrices,onSetPrice,onUpdAllCards,adminReqs,onApproveAdmin,onRejectAdmin,onAnswer,onSend,onDismiss}){
+  const t=theme;
+  const[cards,setCards]=useState(()=>{
+    // Apply global prices to existing cards on load
+    const gp=initPrices();
+    return (user.cards||[]).map(c=>{const k=priceKey(c);return gp[k]?{...c,ebayLow:gp[k].low,ebayAvg:gp[k].avg}:c;});
+  });
+  const[folders,setFolders]=useState(user.folders||[]);
+  const[wl,setWl]=useState(user.wishlist||[]);
+  const[settings,setSettings]=useState({...DS,...user.settings});
+  const[view,setView]=useState("home");
+  const[aF,setAF]=useState(null);
+  const[scanning,setScanning]=useState(false);
+  const[sel,setSel]=useState(null);
+  const[showF,setShowF]=useState(false);
+  const[showWl,setShowWl]=useState(false);
+  const[search,setSearch]=useState("");
+  const[filters,setFilters]=useState({sport:"All Sports",type:"All Types",cond:"All Conditions",brand:"All Brands",par:"All Parallels"});
+  const[sort,setSort]=useState(settings.sortDefault||"newest");
+  const[listMode,setListMode]=useState(false);
+  const[selMode,setSelMode]=useState(false);
+  const[selIds,setSelIds]=useState(new Set());
+  const[showTour,setShowTour]=useState(false);
+  const[showAdmin,setShowAdmin]=useState(false);
+
+  // Sync back to parent + localStorage on change
+  const syncRef=useRef(false);
+  useEffect(()=>{if(!syncRef.current){syncRef.current=true;return;}onUpdUser({...user,cards,folders,wishlist:wl,settings});},[cards,folders,wl,settings]);
+
+  const addCard=c=>{
+    // Apply global price if exists
+    const gp=initPrices();const k=priceKey(c);
+    const priced=gp[k]?{...c,ebayLow:gp[k].low,ebayAvg:gp[k].avg}:c;
+    setCards(p=>[priced,...p]);
+  };
+  const updCard=c=>{setCards(p=>p.map(x=>x.id===c.id?c:x));setSel(c);};
+  const delCard=id=>{setCards(p=>p.filter(x=>x.id!==id));setSel(null);};
+  const mkF=n=>{if(!folders.find(f=>f.name===n))setFolders(f=>[...f,{name:n,cover:null}]);};
+  const rmF=n=>{setFolders(f=>f.filter(x=>x.name!==n));setCards(p=>p.map(c=>c.folder===n?{...c,folder:null}:c));};
+  const rnF=(o,n)=>{setFolders(f=>f.map(x=>x.name===o?{...x,name:n}:x));setCards(p=>p.map(c=>c.folder===o?{...c,folder:n}:c));};
+  const cvF=(name,url)=>setFolders(f=>f.map(x=>x.name===name?{...x,cover:url}:x));
+  const mvSel=folder=>{setCards(p=>p.map(c=>selIds.has(c.id)?{...c,folder}:c));setSelIds(new Set());setSelMode(false);};
+  const dlSel=()=>{if(window.confirm(`Delete ${selIds.size} cards?`)){setCards(p=>p.filter(c=>!selIds.has(c.id)));setSelIds(new Set());setSelMode(false);}};
+  const exportCSV=()=>{
+    const H=["Player","Sport","Year","Brand","Type","Parallel","Team","Condition","Graded","Grade","Serialed","Serial#","Folder","Low $","Avg $","Notes"];
+    const R=cards.map(c=>[c.player,c.sport,c.year,c.brand,c.type,c.parallel||"Base",c.team,c.condition,c.graded?"Yes":"No",c.grade||"",c.serialed?"Yes":"No",c.serialNum||"",c.folder||"",c.ebayLow||"",c.ebayAvg||"",c.notes||""]);
+    const csv=[H,...R].map(r=>r.map(v=>'"'+String(v||"").replace(/"/g,'""')+'"').join(",")).join("\n");
+    const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download="card-vault.csv";a.click();
+  };
+
+  // Apply global price update to this user's cards
+  const handleSetPrice=(card,low,avg)=>{
+    onSetPrice(card,low,avg);
+    setCards(p=>p.map(c=>{const k=priceKey(c);return k===priceKey(card)?{...c,ebayLow:low,ebayAvg:avg}:c;}));
+  };
+
+  const filtered=cards.filter(c=>{
+    if(aF&&c.folder!==aF)return false;
+    const q=search.toLowerCase();
+    return(!q||[c.player,c.team,c.year,c.brand,c.notes].some(x=>x?.toLowerCase().includes(q)))
+      &&(filters.sport==="All Sports"||c.sport===filters.sport)
+      &&(filters.type==="All Types"||c.type===filters.type)
+      &&(filters.cond==="All Conditions"||c.condition===filters.cond)
+      &&(filters.brand==="All Brands"||c.brand===filters.brand)
+      &&(filters.par==="All Parallels"||(c.parallel||"Base")===filters.par);
+  }).sort((a,b)=>{
+    if(sort==="newest")return b.id>a.id?1:-1;
+    if(sort==="value_hi")return(b.ebayAvg||0)-(a.ebayAvg||0);
+    if(sort==="value_lo")return(a.ebayAvg||0)-(b.ebayAvg||0);
+    if(sort==="alpha")return(a.player||"").localeCompare(b.player||"");
+    if(sort==="year_new")return(b.year||0)-(a.year||0);
+    return 0;
+  });
+
+  const best=topC(cards);
+  const unread=notifs.filter(n=>!n.read).length;
+  const userIsAdmin=isAdmin(user);
+
+  // Leaderboard
+  const board=allUsers.map(u=>u.id===user.id?{...u,cards,settings}:u)
+    .filter(u=>!isAdmin(u)&&u.settings?.shareCollection!==false&&tv(u.cards||[])>0)
+    .map(u=>({...u,total:tv(u.cards||[])})).sort((a,b)=>b.total-a.total);
+  const boardMax=board.length?board[0].total:1;
+  const medals=["🥇","🥈","🥉"];
+
+  if(showAdmin)return(
+    <AdminPanel users={allUsers} notifs={notifs} onBack={()=>setShowAdmin(false)} onSend={onSend} onDismiss={onDismiss} onAnswer={onAnswer}
+      onUpdUser={u=>{onUpdUser(u);if(u.id===user.id)setCards(u.cards||[]);}} onSetPrice={handleSetPrice} globalPrices={globalPrices}
+      adminReqs={adminReqs} onApproveAdmin={onApproveAdmin} onRejectAdmin={onRejectAdmin} t={t} currentUser={user}/>
+  );
+
+  if(view==="settings")return(
+    <div style={{position:"fixed",inset:0,zIndex:400,background:t.bg,overflowY:"auto"}}>
+      <SettingsPage user={{...user,settings}} onUpdate={u=>{const ns={...DS,...u.settings};setSettings(ns);setTheme(ns.darkMode?DK:LT);onUpdUser(u);}} onBack={()=>setView("home")} t={t} isAdminUser={userIsAdmin}/>
+    </div>
+  );
+  if(view==="help")return(
+    <div style={{position:"fixed",inset:0,zIndex:400,background:t.bg,overflowY:"auto"}}>
+      <HelpPage onBack={()=>setView("home")} onTour={()=>{setView("home");setShowTour(true);}} onQuestion={onQuestion} user={user} t={t}/>
+    </div>
+  );
+
+  /* ── NAV ── */
+  const NAV=[
+    {id:"home",icon:<svg width={20} height={20} viewBox="0 0 20 20" fill="none"><path d="M3 9.5L10 3l7 6.5V17a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z" stroke="currentColor" strokeWidth="1.7"/><rect x="7.5" y="12" width="5" height="6" rx=".5" stroke="currentColor" strokeWidth="1.5"/></svg>,label:"Home"},
+    {id:"collection",icon:<svg width={20} height={20} viewBox="0 0 20 20" fill="none"><rect x="2" y="3" width="11" height="15" rx="2" stroke="currentColor" strokeWidth="1.7"/><rect x="5" y="1" width="11" height="15" rx="2" stroke="currentColor" strokeWidth="1.5"/><rect x="8" y="4" width="6" height="4" rx="1" stroke="currentColor" strokeWidth="1.3"/></svg>,label:"Collection"},
+    {id:"stats",icon:<svg width={20} height={20} viewBox="0 0 20 20" fill="none"><rect x="2" y="12" width="4" height="6" rx="1" fill="currentColor" opacity=".5"/><rect x="8" y="8" width="4" height="10" rx="1" fill="currentColor" opacity=".7"/><rect x="14" y="4" width="4" height="14" rx="1" fill="currentColor"/></svg>,label:"Stats"},
+    {id:"ranks",icon:<svg width={20} height={20} viewBox="0 0 20 20" fill="none"><path d="M10 2l2 5h5l-4 3 1.5 5L10 12l-4.5 3L7 10 3 7h5L10 2z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/></svg>,label:"Ranks"},
+    {id:"help",icon:<svg width={20} height={20} viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="8" stroke="currentColor" strokeWidth="1.7"/><path d="M7.5 7.5a2.5 2.5 0 015 0c0 1.5-2.5 2-2.5 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round"/><circle cx="10" cy="15" r=".9" fill="currentColor"/></svg>,label:"Help"},
+  ];
+
+  return(
+    <div style={{minHeight:"100vh",background:t.bg,maxWidth:900,margin:"0 auto",fontFamily:"-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif"}}>
+
+      {/* ── HEADER ── */}
+      <div style={{background:t.nav,borderBottom:"1px solid "+t.bord,padding:"12px 16px",display:"flex",alignItems:"center",justifyContent:"space-between",position:"sticky",top:0,zIndex:200,boxShadow:t.sh}}>
+        <div onClick={()=>{setView("home");setAF(null);}} style={{cursor:"pointer",display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:34,height:34,borderRadius:10,background:t.gradBtn,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 4px 12px rgba(108,61,251,.4)"}}>
+            <svg width="18" height="18" viewBox="0 0 28 28" fill="none"><rect x="3" y="1.5" width="18" height="25" rx="2.5" stroke="white" strokeWidth="1.8" fill="rgba(255,255,255,0.2)"/><rect x="6" y="4.5" width="12" height="8" rx="1.5" stroke="white" strokeWidth="1.3" fill="rgba(255,255,255,0.2)"/><line x1="6" y1="15.5" x2="18" y2="15.5" stroke="white" strokeWidth="1.4" strokeLinecap="round"/><line x1="6" y1="18.5" x2="14" y2="18.5" stroke="white" strokeWidth="1.4" strokeLinecap="round"/><line x1="6" y1="21.5" x2="11" y2="21.5" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+          </div>
+          <div>
+            <div style={{fontSize:16,fontWeight:900,color:t.tx,letterSpacing:-.4}}>Card Vault</div>
+            <div style={{color:t.tx3,fontSize:10,fontWeight:600}}>{cards.length} cards · {tv(cards)>0?fmt(tv(cards)):"$0"}</div>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:6,alignItems:"center"}}>
+          {userIsAdmin&&<button onClick={()=>setShowAdmin(true)} style={{position:"relative",background:t.accBg,border:"none",color:t.acc,borderRadius:10,padding:"7px 10px",cursor:"pointer",fontSize:14,fontWeight:800}}>
+            ⚡{unread>0&&<span style={{position:"absolute",top:-4,right:-4,background:t.red,borderRadius:"50%",width:15,height:15,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,color:"#fff",fontWeight:800}}>{unread}</span>}
+          </button>}
+          <button onClick={()=>setShowWl(true)} style={{background:t.surf2,border:"1px solid "+t.bord,color:t.tx2,borderRadius:10,padding:"7px 10px",cursor:"pointer",fontSize:14}}>★</button>
+          <button onClick={()=>setShowF(true)} style={{background:t.surf2,border:"1px solid "+t.bord,color:t.tx2,borderRadius:10,padding:"7px 10px",cursor:"pointer",fontSize:13}}>📁</button>
+          <button onClick={exportCSV} style={{background:t.surf2,border:"1px solid "+t.bord,color:t.tx2,borderRadius:10,padding:"7px 10px",cursor:"pointer",fontSize:13}}>↓</button>
+          <InstallButton t={t}/>
+          <button onClick={()=>setView("settings")} style={{background:t.surf2,border:"1px solid "+t.bord,color:t.tx2,borderRadius:10,padding:"7px 10px",cursor:"pointer",fontSize:14}}>⚙</button>
+          <button onClick={()=>setScanning(true)} style={{background:t.gradBtn,border:"none",color:"#fff",borderRadius:11,padding:"8px 16px",cursor:"pointer",fontSize:13,fontWeight:800,boxShadow:"0 4px 14px rgba(108,61,251,.4)"}}>+ Scan</button>
+        </div>
+      </div>
+
+      {/* ── BOTTOM NAV ── */}
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:900,background:t.nav,borderTop:"1px solid "+t.bord,display:"flex",zIndex:200,boxShadow:"0 -2px 12px rgba(0,0,0,.08)"}}>
+        {NAV.map(n=>(
+          <button key={n.id} onClick={()=>{setView(n.id);if(n.id!=="collection")setAF(null);}} style={{flex:1,padding:"10px 4px 8px",background:"none",border:"none",cursor:"pointer",color:view===n.id?t.acc:t.tx3,display:"flex",flexDirection:"column",alignItems:"center",gap:3,transition:"color .15s"}}>
+            {n.icon}<span style={{fontSize:10,fontWeight:700}}>{n.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {/* ═════ HOME ═════ */}
+      {view==="home"&&<div style={{padding:"16px 16px 90px"}}>
+        {/* Hero: top card */}
+        {best?(
+          <div onClick={()=>setSel(best)} style={{borderRadius:22,overflow:"hidden",marginBottom:18,cursor:"pointer",position:"relative",boxShadow:t.shHov}}>
+            <div style={{background:t.gradHero,padding:"20px 18px 18px",display:"flex",gap:16,alignItems:"center",position:"relative"}}>
+              <div style={{position:"absolute",top:-30,right:-30,width:160,height:160,borderRadius:"50%",background:best.color+"30",filter:"blur(40px)"}}/>
+              <div style={{position:"absolute",top:0,left:0,right:0,bottom:0,background:"linear-gradient(135deg,"+t.acc+"15,transparent)"}}>
+                {/* sparkle bg */}
+              </div>
+              <div style={{width:90,height:126,borderRadius:14,overflow:"hidden",flexShrink:0,boxShadow:"0 8px 30px rgba(0,0,0,.5)",border:best.parallel&&best.parallel!=="Base"?"2px solid #FBBF24":"1px solid rgba(255,255,255,.2)",position:"relative",zIndex:1}}>
+                {best.image?<img src={best.image} alt={best.player} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<CardArt card={best}/>}
+              </div>
+              <div style={{flex:1,position:"relative",zIndex:1}}>
+                <div style={{fontSize:10,fontWeight:800,color:"#FBBF24",letterSpacing:1,marginBottom:4}}>👑 HIGHEST VALUED CARD</div>
+                <div style={{fontSize:22,fontWeight:900,color:"#fff",lineHeight:1.15,marginBottom:4,letterSpacing:-.5}}>{best.player}</div>
+                <div style={{color:"rgba(255,255,255,.5)",fontSize:12,marginBottom:10}}>{best.year} {best.brand}{best.parallel&&best.parallel!=="Base"?" · "+best.parallel+" Parallel":""}</div>
+                {best.ebayAvg&&<div style={{display:"inline-flex",alignItems:"baseline",gap:4,background:"rgba(251,191,36,.15)",borderRadius:10,padding:"5px 12px",border:"1px solid rgba(251,191,36,.3)"}}>
+                  <span style={{fontSize:22,fontWeight:900,color:"#FBBF24"}}>{fmt(best.ebayAvg)}</span>
+                  <span style={{color:"rgba(255,255,255,.4)",fontSize:11,fontWeight:600}}>est.</span>
+                </div>}
+              </div>
+            </div>
+          </div>
+        ):(
+          <div onClick={()=>setScanning(true)} style={{borderRadius:22,overflow:"hidden",marginBottom:18,cursor:"pointer",background:t.gradHero,padding:"32px 24px",textAlign:"center",boxShadow:t.shHov}}>
+            <div style={{fontSize:40,marginBottom:10}}>📸</div>
+            <div style={{fontSize:20,fontWeight:900,color:"#fff",marginBottom:6,letterSpacing:-.3}}>Scan your first card</div>
+            <div style={{color:"rgba(255,255,255,.5)",fontSize:14}}>Tap to add a card to your vault</div>
+          </div>
+        )}
+
+        {/* Stats strip */}
+        <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:18}}>
+          {[["Cards",cards.length,t.acc],["Value",tv(cards)>0?fmt(tv(cards)):"$0",t.gold],["Rookies",cards.filter(c=>c.type==="Rookie").length,t.grn],["Graded",cards.filter(c=>c.graded).length,t.tx3]].map(([l,v,clr])=>(
+            <Card key={l} t={t} sx={{padding:"12px 8px",textAlign:"center",background:t.surf2}}>
+              <div style={{fontSize:17,fontWeight:900,color:clr}}>{v}</div>
+              <div style={{color:t.tx3,fontSize:10,fontWeight:700,marginTop:2}}>{l.toUpperCase()}</div>
+            </Card>
+          ))}
+        </div>
+
+        {/* Folders */}
+        {folders.length>0&&<div style={{marginBottom:18}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:14,fontWeight:800,color:t.tx,letterSpacing:-.2}}>Folders</div>
+            <button onClick={()=>setShowF(true)} style={{background:"none",border:"none",color:t.acc,fontSize:13,fontWeight:700,cursor:"pointer"}}>Manage</button>
+          </div>
+          <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+            {folders.map(f=>{const fc=cards.filter(c=>c.folder===f.name);return(
+              <Card key={f.name} t={t} sx={{display:"flex",alignItems:"center",overflow:"hidden",cursor:"pointer",padding:0,minWidth:140}} onClick={()=>{setView("collection");setAF(f.name);}}>
+                <div style={{width:46,height:46,flexShrink:0,overflow:"hidden",background:t.surf2}}>
+                  {f.cover?<img src={f.cover} alt={f.name} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<div style={{width:"100%",height:"100%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>📁</div>}
+                </div>
+                <div style={{padding:"6px 12px"}}>
+                  <div style={{fontSize:13,fontWeight:700,color:t.tx,whiteSpace:"nowrap"}}>{f.name}</div>
+                  <div style={{color:t.tx3,fontSize:11}}>{fc.length} cards</div>
+                </div>
+              </Card>
+            );})}
+          </div>
+        </div>}
+
+        {/* Recent cards */}
+        {cards.length>0&&<div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontSize:14,fontWeight:800,color:t.tx,letterSpacing:-.2}}>Recently Added</div>
+            <button onClick={()=>setView("collection")} style={{background:"none",border:"none",color:t.acc,fontSize:13,fontWeight:700,cursor:"pointer"}}>View All</button>
+          </div>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(90px,1fr))",gap:8}}>
+            {cards.slice(0,12).map(c=>(
+              <div key={c.id} onClick={()=>setSel(c)} style={{aspectRatio:"2.5/3.5",borderRadius:12,overflow:"hidden",cursor:"pointer",boxShadow:t.sh}}>
+                {c.image?<img src={c.image} alt={c.player} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<CardArt card={c} sm/>}
+              </div>
+            ))}
+          </div>
+        </div>}
+
+        {/* User strip */}
+        <Card t={t} sx={{marginTop:20,padding:"12px 14px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            <Av name={user.name}/>
+            <div>
+              <div style={{fontSize:13,fontWeight:800,color:t.tx}}>{user.name}</div>
+              <div style={{color:t.tx3,fontSize:11}}>{user.email}{userIsAdmin&&<span style={{marginLeft:6,background:t.accBg,color:t.acc,padding:"1px 6px",borderRadius:6,fontSize:10,fontWeight:700}}>{isSuper(user)?"Super":"Admin"}</span>}</div>
+            </div>
+          </div>
+          <Btn t={t} v="ghost" sz="sm" onClick={onLogout}>Sign Out</Btn>
+        </Card>
+      </div>}
+
+      {/* ═════ COLLECTION ═════ */}
+      {view==="collection"&&<div style={{paddingBottom:90}}>
+        {folders.length>0&&<div style={{padding:"12px 16px 0",display:"flex",gap:6,overflowX:"auto"}}>
+          <button onClick={()=>setAF(null)} style={{padding:"5px 14px",borderRadius:20,border:"1.5px solid "+(aF===null?t.acc:t.bord),background:aF===null?t.accBg:"transparent",color:aF===null?t.acc:t.tx3,fontSize:12,cursor:"pointer",fontWeight:600,whiteSpace:"nowrap"}}>All</button>
+          {folders.map(f=>(
+            <button key={f.name} onClick={()=>setAF(f.name===aF?null:f.name)} style={{padding:"5px 14px",borderRadius:20,border:"1.5px solid "+(aF===f.name?t.acc:t.bord),background:aF===f.name?t.accBg:"transparent",color:aF===f.name?t.acc:t.tx3,fontSize:12,cursor:"pointer",fontWeight:600,whiteSpace:"nowrap",display:"flex",alignItems:"center",gap:5}}>
+              {f.cover&&<img src={f.cover} alt="" style={{width:14,height:14,borderRadius:3,objectFit:"cover"}}/>}{f.name} ({cards.filter(c=>c.folder===f.name).length})
+            </button>
+          ))}
+        </div>}
+        <div style={{padding:"10px 16px",display:"flex",flexWrap:"wrap",gap:8}}>
+          <input placeholder="Search cards…" value={search} onChange={e=>setSearch(e.target.value)}
+            style={{flex:"1 1 160px",padding:"9px 14px",borderRadius:11,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:13,outline:"none",fontFamily:"inherit"}}
+            onFocus={e=>e.target.style.borderColor=t.acc} onBlur={e=>e.target.style.borderColor=t.bord}/>
+          {[["sport",SPORTS,filters.sport],["type",CTYPES,filters.type],["par",["All Parallels",...PARS],filters.par],["cond",CONDS,filters.cond],["brand",BRANDS,filters.brand]].map(([k,opts,val])=>(
+            <select key={k} value={val} onChange={e=>setFilters(f=>({...f,[k]:e.target.value}))}
+              style={{padding:"9px 12px",borderRadius:11,border:"1.5px solid "+t.bord,background:t.inp,color:val.startsWith("All")?t.tx3:t.tx,fontSize:12,cursor:"pointer",outline:"none",appearance:"none",fontFamily:"inherit"}}>
+              {opts.map(o=><option key={o} value={o}>{o}</option>)}
+            </select>
+          ))}
+          <select value={sort} onChange={e=>setSort(e.target.value)} style={{padding:"9px 12px",borderRadius:11,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx2,fontSize:12,cursor:"pointer",outline:"none",appearance:"none",fontFamily:"inherit"}}>
+            <option value="newest">Newest</option><option value="value_hi">Value ↓</option><option value="value_lo">Value ↑</option><option value="alpha">A–Z</option><option value="year_new">Year ↓</option>
+          </select>
+        </div>
+        <div style={{padding:"0 16px 10px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div style={{color:t.tx3,fontSize:12,fontWeight:600}}>{filtered.length} card{filtered.length!==1?"s":""}</div>
+          <div style={{display:"flex",gap:7}}>
+            {selMode&&selIds.size>0&&<>
+              <select onChange={e=>{if(e.target.value){mvSel(e.target.value==="__none__"?null:e.target.value);}e.target.value="";}} style={{padding:"6px 10px",borderRadius:9,border:"1px solid "+t.bord,background:t.inp,color:t.tx,fontSize:12,outline:"none",appearance:"none"}}>
+                <option value="">Move to…</option><option value="__none__">No folder</option>
+                {folders.map(f=><option key={f.name} value={f.name}>{f.name}</option>)}
+              </select>
+              <Btn t={t} v="red" sz="sm" onClick={dlSel}>Delete ({selIds.size})</Btn>
+            </>}
+            <Btn t={t} v={selMode?"soft":"ghost"} sz="sm" onClick={()=>{setSelMode(s=>!s);setSelIds(new Set());}}>{selMode?"Done":"Select"}</Btn>
+            <button onClick={()=>setListMode(m=>!m)} style={{background:t.surf2,border:"1px solid "+t.bord,color:t.tx2,borderRadius:9,padding:"6px 10px",cursor:"pointer",fontSize:14}}>{listMode?"⊞":"☰"}</button>
+          </div>
+        </div>
+        {!listMode&&<div style={{padding:"0 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(115px,1fr))",gap:10}}>
+          {filtered.map(c=><CardTile key={c.id} card={c} onClick={x=>!selMode&&setSel(x)} selMode={selMode} selSet={setSelIds} selIds={selIds} t={t}/>)}
+          <div onClick={()=>setScanning(true)} style={{aspectRatio:"2.5/3.5",borderRadius:14,border:"2px dashed "+t.bord,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"border-color .15s"}}
+            onMouseEnter={e=>e.currentTarget.style.borderColor=t.acc} onMouseLeave={e=>e.currentTarget.style.borderColor=t.bord}>
+            <div style={{fontSize:24,color:t.tx3}}>+</div><div style={{color:t.tx3,fontSize:11,fontWeight:600,marginTop:4}}>Add Card</div>
+          </div>
+        </div>}
+        {listMode&&<div style={{padding:"0 16px",display:"flex",flexDirection:"column",gap:6}}>
+          {filtered.map(c=>{const isP=c.parallel&&c.parallel!=="Base";return(
+            <Card key={c.id} t={t} sx={{padding:"10px 14px",display:"flex",alignItems:"center",gap:10,cursor:"pointer",border:isP?"1px solid "+t.gold+"30":"1px solid "+t.bord}} onClick={()=>setSel(c)}>
+              <div style={{width:38,height:53,borderRadius:9,overflow:"hidden",flexShrink:0}}>{c.image?<img src={c.image} alt={c.player} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<CardArt card={c} sm/>}</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:14,fontWeight:800,color:t.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.player}</div>
+                <div style={{color:t.tx3,fontSize:11,marginTop:1}}>{c.year} {c.brand}{isP?" · "+c.parallel:""}</div>
+              </div>
+              <div style={{textAlign:"right",flexShrink:0}}>
+                {c.ebayAvg?<div style={{fontSize:15,fontWeight:900,color:t.gold}}>{fmt(c.ebayAvg)}</div>:<div style={{color:t.tx3,fontSize:12}}>—</div>}
+                {c.graded&&<div style={{color:t.grn,fontSize:10,fontWeight:700}}>{c.grade}</div>}
+              </div>
+            </Card>
+          );})}
+        </div>}
+      </div>}
+
+      {/* ═════ STATS ═════ */}
+      {view==="stats"&&<div style={{padding:"16px 16px 90px"}}>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:14}}>
+          {[["Cards",cards.length,t.acc],["Value",tv(cards)>0?fmt(tv(cards)):"$0",t.gold],["Rookies",cards.filter(c=>c.type==="Rookie").length,t.grn],["Graded",cards.filter(c=>c.graded).length,"#A78BFA"],["Serialed",cards.filter(c=>c.serialed).length,t.acc],["Parallels",cards.filter(c=>c.parallel&&c.parallel!=="Base").length,t.gold]].map(([l,v,clr])=>(
+            <Card key={l} t={t} sx={{padding:12,textAlign:"center"}}><div style={{fontSize:20,fontWeight:900,color:clr}}>{v}</div><div style={{color:t.tx3,fontSize:10,fontWeight:700,marginTop:2}}>{l.toUpperCase()}</div></Card>
+          ))}
+        </div>
+        {[...cards].sort((a,b)=>(b.ebayAvg||0)-(a.ebayAvg||0)).slice(0,5).length>0&&(
+          <Card t={t} sx={{padding:16,marginBottom:12}}>
+            <div style={{fontSize:12,fontWeight:800,color:t.tx3,letterSpacing:.5,marginBottom:12}}>👑 TOP 5 BY VALUE</div>
+            {[...cards].sort((a,b)=>(b.ebayAvg||0)-(a.ebayAvg||0)).slice(0,5).map((c,i)=>(
+              <div key={c.id} onClick={()=>setSel(c)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 0",borderTop:i>0?"1px solid "+t.bord:"none",cursor:"pointer"}}>
+                <div style={{width:22,textAlign:"center",fontSize:14,fontWeight:900,color:i===0?t.gold:t.tx3}}>{i+1}</div>
+                <div style={{width:32,height:44,borderRadius:7,overflow:"hidden",flexShrink:0}}>{c.image?<img src={c.image} alt={c.player} style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<CardArt card={c} sm/>}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:13,fontWeight:800,color:t.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.player}</div>
+                  <div style={{color:t.tx3,fontSize:11}}>{c.year} {c.brand}{c.parallel&&c.parallel!=="Base"?" · "+c.parallel:""}</div>
+                </div>
+                <div style={{fontSize:14,fontWeight:900,color:t.gold}}>{fmt(c.ebayAvg||0)}</div>
+              </div>
+            ))}
+          </Card>
+        )}
+        {cards.length===0&&<div style={{textAlign:"center",padding:"60px 0"}}><div style={{fontSize:40,marginBottom:10}}>📊</div><div style={{fontSize:16,fontWeight:700,color:t.tx,marginBottom:4}}>No cards yet</div><div style={{color:t.tx3,fontSize:13}}>Scan a card to see stats</div></div>}
+      </div>}
+
+      {/* ═════ RANKS ═════ */}
+      {view==="ranks"&&<div style={{padding:"16px 16px 90px"}}>
+        {board.length===0&&<div style={{textAlign:"center",padding:"60px 20px"}}><div style={{fontSize:52,marginBottom:12}}>🏆</div><div style={{fontSize:18,fontWeight:800,color:t.tx,marginBottom:8}}>No rankings yet</div><div style={{color:t.tx2,fontSize:14,lineHeight:1.6,maxWidth:280,margin:"0 auto"}}>Enable <strong>"Show on Leaderboard"</strong> in Settings → Privacy, then add cards with values to appear.</div></div>}
+        {board.length>=2&&(
+          <div style={{display:"flex",alignItems:"flex-end",justifyContent:"center",gap:8,marginBottom:24}}>
+            {(board.length===2?[board[1],board[0]]:[board[1],board[0],board[2]]).map((u,idx)=>{
+              const rank=board.length===2?(idx===1?0:1):(idx===1?0:idx===0?1:2);
+              const hs=board.length===2?[100,130]:[100,130,82];
+              const isMe=u.id===user.id;
+              const bgClrs=[t.gold,"#9CA3AF","#CD7F32"];
+              return(
+                <div key={u.id} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:7,maxWidth:120}}>
+                  <Av name={u.name} size={rank===0?48:38}/>
+                  <div style={{fontSize:12,fontWeight:700,color:isMe?t.acc:t.tx,textAlign:"center",width:"100%",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{isMe?"You":u.name}</div>
+                  <div style={{width:"100%",height:hs[idx],background:bgClrs[rank],borderRadius:"12px 12px 0 0",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,boxShadow:"0 4px 16px "+bgClrs[rank]+"60"}}>
+                    <div style={{fontSize:rank===0?28:22}}>{["🥇","🥈","🥉"][rank]}</div>
+                    <div style={{color:"#fff",fontSize:12,fontWeight:900}}>{fmt(u.total)}</div>
+                    <div style={{color:"rgba(255,255,255,.7)",fontSize:10}}>{(u.cards||[]).length} cards</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+          {board.map((u,i)=>{
+            const isMe=u.id===user.id;const pct=Math.max(4,Math.round((u.total/boardMax)*100));
+            return(
+              <Card key={u.id} t={t} sx={{padding:14,border:isMe?"2px solid "+t.acc:"1px solid "+t.bord,background:isMe?t.accBg:t.surf}}>
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:32,textAlign:"center",fontWeight:900,fontSize:i<3?20:14,color:i===0?t.gold:i===1?"#9CA3AF":i===2?"#CD7F32":t.tx3,flexShrink:0}}>{i<3?["🥇","🥈","🥉"][i]:"#"+(i+1)}</div>
+                  <Av name={u.name} size={38}/>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:14,fontWeight:800,color:isMe?t.acc:t.tx,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginBottom:5}}>{isMe?"You ("+u.name+")":u.name}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:8}}>
+                      <div style={{flex:1,height:5,background:t.surf2,borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:pct+"%",background:i===0?t.gold:isMe?t.gradBtn:t.bord,borderRadius:3}}/></div>
+                      <span style={{color:t.tx3,fontSize:11,fontWeight:600,whiteSpace:"nowrap"}}>{(u.cards||[]).length} cards</span>
+                    </div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontSize:17,fontWeight:900,color:i===0?t.gold:isMe?t.acc:t.tx}}>{fmt(u.total)}</div>
+                    <div style={{color:t.tx3,fontSize:11}}>est. value</div>
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
+        </div>
+        {board.length>0&&<Card t={t} sx={{padding:14,marginTop:12,background:t.surf2}}><div style={{color:t.tx3,fontSize:12,textAlign:"center",lineHeight:1.6}}>Only real users are shown. Control visibility in <strong style={{color:t.tx}}>Settings → Privacy</strong>.</div></Card>}
+      </div>}
+
+      {/* ── MODALS ── */}
+      {scanning&&<ScanModal onClose={()=>setScanning(false)} onAdd={addCard} folders={folders} t={t}/>}
+      {sel&&<DetailModal card={sel} onClose={()=>setSel(null)} onUpdate={c=>{updCard(c);if(userIsAdmin&&(c.ebayLow||c.ebayAvg)){handleSetPrice(c,c.ebayLow,c.ebayAvg);}}} onDelete={delCard} folders={folders} canEditPrice={userIsAdmin} t={t}/>}
+      {showF&&<FolderModal folders={folders} cards={cards} onClose={()=>setShowF(false)} onCreate={mkF} onDelete={rmF} onRename={rnF} onCover={cvF} t={t}/>}
+      {showWl&&<WishlistModal wl={wl} onClose={()=>setShowWl(false)} onAdd={w=>setWl(l=>[w,...l])} onDel={id=>setWl(l=>l.filter(w=>w.id!==id))} t={t}/>}
+      {showTour&&<TourModal t={t} onDone={()=>setShowTour(false)}/>}
+      <InstallBanner t={t}/>
+      <ChatBot t={t} user={user}/>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   CHATBOT
+═══════════════════════════════════════════════════════════ */
+function ChatBot({t,user}){
+  const[open,setOpen]=useState(false);
+  const[msgs,setMsgs]=useState([{role:"assistant",content:"Hey! I'm your Card Vault assistant 🃏 Ask me anything about sports cards — grading, values, parallels, rookies, investing, or how to use the app!"}]);
+  const[input,setInput]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[unread,setUnread]=useState(0);
+  const bottomRef=useRef();
+  const inputRef=useRef();
+
+  useEffect(()=>{
+    if(open){
+      setUnread(0);
+      setTimeout(()=>bottomRef.current?.scrollIntoView({behavior:"smooth"}),80);
+      setTimeout(()=>inputRef.current?.focus(),120);
+    }
+  },[open,msgs]);
+
+  const send=async()=>{
+    const text=input.trim();
+    if(!text||loading)return;
+    setInput("");
+    const newMsgs=[...msgs,{role:"user",content:text}];
+    setMsgs(newMsgs);
+    setLoading(true);
+    try{
+      const resp=await fetch("/api/chat",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({messages:newMsgs.slice(-10).map(m=>({role:m.role,content:m.content}))})
+      });
+      const data=await resp.json();
+      const reply=data.reply||data.error||"Sorry, I couldn't respond. Try again.";
+      setMsgs(p=>[...p,{role:"assistant",content:reply}]);
+      if(!open)setUnread(u=>u+1);
+    }catch(e){
+      setMsgs(p=>[...p,{role:"assistant",content:"Connection error — check your internet and try again."}]);
+    }
+    setLoading(false);
+  };
+
+  const SUGGESTIONS=["What makes a card valuable?","How do I grade a card?","What's a Prizm refractor?","Best rookie cards to collect?","How to spot a fake card?"];
+
+  return(
+    <>
+      {/* Floating button */}
+      <button onClick={()=>setOpen(o=>!o)} style={{position:"fixed",bottom:90,right:16,zIndex:7000,width:54,height:54,borderRadius:27,background:open?t.surf3:t.gradBtn,border:open?"2px solid "+t.bord:"none",boxShadow:open?t.sh:"0 6px 24px rgba(108,61,251,.5)",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,transition:"all .2s",flexShrink:0}}>
+        {open?"✕":"💬"}
+        {!open&&unread>0&&<div style={{position:"absolute",top:-2,right:-2,background:t.red,borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:800}}>{unread}</div>}
+      </button>
+
+      {/* Chat panel */}
+      {open&&(
+        <div style={{position:"fixed",bottom:156,right:16,zIndex:7000,width:Math.min(360,window.innerWidth-32),height:480,background:t.surf,borderRadius:22,boxShadow:t.shHov,border:"1px solid "+t.bord,display:"flex",flexDirection:"column",overflow:"hidden",animation:"slideUp .25s ease"}}>
+
+          {/* Header */}
+          <div style={{background:t.gradBtn,padding:"14px 16px",display:"flex",alignItems:"center",gap:10,flexShrink:0}}>
+            <div style={{width:36,height:36,borderRadius:18,background:"rgba(255,255,255,.2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>🃏</div>
+            <div style={{flex:1}}>
+              <div style={{color:"#fff",fontWeight:800,fontSize:15,lineHeight:1}}>Card Vault AI</div>
+              <div style={{color:"rgba(255,255,255,.7)",fontSize:11,marginTop:2}}>{loading?"Thinking...":"Your card collecting expert"}</div>
+            </div>
+            <button onClick={()=>setOpen(false)} style={{background:"rgba(255,255,255,.15)",border:"none",color:"#fff",width:28,height:28,borderRadius:14,cursor:"pointer",fontSize:15,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
+          </div>
+
+          {/* Messages */}
+          <div style={{flex:1,overflowY:"auto",padding:"14px 14px 8px",display:"flex",flexDirection:"column",gap:10}}>
+            {msgs.map((m,i)=>(
+              <div key={i} style={{display:"flex",flexDirection:m.role==="user"?"row-reverse":"row",gap:8,alignItems:"flex-end"}}>
+                {m.role==="assistant"&&<div style={{width:26,height:26,borderRadius:13,background:t.gradBtn,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0,marginBottom:2}}>🃏</div>}
+                <div style={{maxWidth:"82%",padding:"10px 13px",borderRadius:m.role==="user"?"18px 18px 4px 18px":"18px 18px 18px 4px",background:m.role==="user"?t.gradBtn:t.surf2,color:m.role==="user"?"#fff":t.tx,fontSize:13,lineHeight:1.55,wordBreak:"break-word",boxShadow:t.sh}}>
+                  {m.content.split("\n").map((line,li)=>(
+                    <span key={li}>{line}{li<m.content.split("\n").length-1&&<br/>}</span>
+                  ))}
+                </div>
+              </div>
+            ))}
+            {loading&&(
+              <div style={{display:"flex",gap:8,alignItems:"flex-end"}}>
+                <div style={{width:26,height:26,borderRadius:13,background:t.gradBtn,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,flexShrink:0}}>🃏</div>
+                <div style={{padding:"10px 14px",borderRadius:"18px 18px 18px 4px",background:t.surf2}}>
+                  <div style={{display:"flex",gap:5}}>
+                    {[0,1,2].map(i=>{const a="pulse 1.2s "+(i*0.4)+"s infinite";return <div key={i} style={{width:7,height:7,borderRadius:"50%",background:t.acc,animation:a}}/>;})}</div>
+                </div>
+              </div>
+            )}
+            <div ref={bottomRef}/>
+          </div>
+
+          {/* Quick suggestions (first message only) */}
+          {msgs.length<=1&&(
+            <div style={{padding:"0 10px 8px",display:"flex",gap:6,flexWrap:"wrap"}}>
+              {SUGGESTIONS.map(s=>(
+                <button key={s} onClick={()=>{setInput(s);setTimeout(()=>inputRef.current?.focus(),50);}} style={{padding:"5px 10px",borderRadius:20,background:t.accBg,border:"1px solid "+t.acc+"30",color:t.acc,fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Input */}
+          <div style={{padding:"10px 12px 12px",borderTop:"1px solid "+t.bord,display:"flex",gap:8,alignItems:"flex-end",flexShrink:0}}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e=>setInput(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();send();}}}
+              placeholder="Ask about cards, values, grading..."
+              rows={1}
+              style={{flex:1,padding:"9px 12px",borderRadius:12,border:"1.5px solid "+t.bord,background:t.inp,color:t.tx,fontSize:13,outline:"none",resize:"none",fontFamily:"inherit",lineHeight:1.4,maxHeight:80,overflowY:"auto"}}
+              onFocus={e=>e.target.style.borderColor=t.acc}
+              onBlur={e=>e.target.style.borderColor=t.bord}
+              onInput={e=>{e.target.style.height="auto";e.target.style.height=Math.min(e.target.scrollHeight,80)+"px";}}
+            />
+            <button onClick={send} disabled={!input.trim()||loading}
+              style={{width:38,height:38,borderRadius:19,background:input.trim()&&!loading?t.gradBtn:t.surf3,border:"none",color:input.trim()&&!loading?"#fff":t.tx3,cursor:input.trim()&&!loading?"pointer":"default",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,flexShrink:0,transition:"all .15s",boxShadow:input.trim()&&!loading?"0 4px 12px rgba(108,61,251,.4)":"none"}}>
+              ➤
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ROOT
+═══════════════════════════════════════════════════════════ */
+function App(){
+  const[users,setUsersRaw]=useState(()=>initUsers());
+  const[me,setMeRaw]=useState(()=>{const u=initUsers();return initMe(u);});
+  const[notifs,setNotifsRaw]=useState(()=>initNotifs());
+  const[globalPrices,setGlobalPricesRaw]=useState(()=>initPrices());
+  const[adminReqs,setAdminReqsRaw]=useState(()=>initAdminReqs());
+  const[theme,setTheme]=useState(()=>{const u=initUsers();const m=initMe(u);return m?.settings?.darkMode?DK:LT;});
+  const[tour,setTour]=useState(false);
+
+  const setUsers=fn=>{setUsersRaw(p=>{const next=typeof fn==="function"?fn(p):fn;saveUsers(next);return next;});};
+  const setMe=u=>{setMeRaw(u);saveMe(u);};
+  const setNotifs=fn=>{setNotifsRaw(p=>{const next=typeof fn==="function"?fn(p):fn;saveNotifs(next);return next;});};
+
+  const updUser=u=>{
+    setUsersRaw(p=>{const next=p.map(x=>x.id===u.id?u:x);saveUsers(next);return next;});
+    setMeRaw(m=>{if(m?.id===u.id){saveMe(u);return u;}return m;});
+  };
+
+  // Admin sets a price — propagate to ALL user cards with matching key
+  const setPrice=(card,low,avg)=>{
+    const k=priceKey(card);
+    setGlobalPricesRaw(p=>{const next={...p,[k]:{low,avg}};savePrices(next);return next;});
+    // Update every user's matching cards
+    setUsersRaw(p=>{
+      const next=p.map(u=>({...u,cards:(u.cards||[]).map(c=>priceKey(c)===k?{...c,ebayLow:low,ebayAvg:avg}:c)}));
+      saveUsers(next);return next;
+    });
+    setMeRaw(m=>{if(!m)return m;const next={...m,cards:(m.cards||[]).map(c=>priceKey(c)===k?{...c,ebayLow:low,ebayAvg:avg}:c)};saveMe(next);return next;});
+  };
+
+  const login=u=>{setMe(u);setTheme(u.settings?.darkMode?DK:LT);};
+  const logout=()=>{setMe(null);setTheme(LT);};
+  const register=async u=>{
+    setUsersRaw(p=>{const next=[...p,u];saveUsers(next);return next;});
+    // Apply existing global prices to new user's future cards
+    setMe(u);setTheme(LT);setTour(true);
+    try{await navigator.mediaDevices?.getUserMedia({video:true,audio:false}).then(s=>s.getTracks().forEach(x=>x.stop()));}catch{}
+    if("Notification" in window&&Notification.permission==="default"){try{await Notification.requestPermission();}catch{}}
+  };
+  const handleForgot=u=>{const pw=gpw();setNotifs(n=>[{id:uid(),type:"pw",userEmail:u.email,userName:u.name,recovery:u.recovery||u.email,recoveryType:u.recoveryType||"email",tempPass:pw,time:now(),read:false,sent:false},...n]);};
+  const handleQuestion=(q,uName,uEmail)=>{setNotifs(n=>[{id:uid(),type:"question",userName:uName,userEmail:uEmail,question:q,time:now(),read:false,answered:false,answer:""},...n]);};
+  const sendRec=id=>setNotifs(n=>n.map(x=>x.id===id?{...x,sent:true,read:true}:x));
+  const answerQ=(id,ans)=>setNotifs(n=>n.map(x=>x.id===id?{...x,answered:true,read:true,answer:ans}:x));
+  const dismiss=id=>setNotifs(n=>n.filter(x=>x.id!==id));
+
+  // Admin requests (sub-admin wants to promote someone)
+  const approveAdmin=id=>{
+    const req=adminReqs.find(r=>r.id===id);if(!req)return;
+    const u=users.find(x=>x.id===req.targetId);if(u)updUser({...u,role:"admin",adminApproved:true});
+    setAdminReqsRaw(p=>{const next=p.map(r=>r.id===id?{...r,status:"approved"}:r);saveAdminReqs(next);return next;});
+  };
+  const rejectAdmin=id=>{
+    setAdminReqsRaw(p=>{const next=p.map(r=>r.id===id?{...r,status:"rejected"}:r);saveAdminReqs(next);return next;});
+  };
+
+  const t=theme;
+
+  return(
+    <>
+      <style>{`
+        @keyframes shim{0%{background-position:200% 0}100%{background-position:-200% 0}}
+        @keyframes pulse{0%,100%{opacity:.2;transform:scale(.8)}50%{opacity:1;transform:scale(1)}}
+        @keyframes slideUp{from{transform:translateY(100%);opacity:0}to{transform:translateY(0);opacity:1}}
+        *{box-sizing:border-box;margin:0;padding:0}
+        html,body{background:${t.bg};color-scheme:${t.dark?"dark":"light"}}
+        ::-webkit-scrollbar{width:4px}::-webkit-scrollbar-thumb{background:${t.bord};border-radius:2px}
+        select,input,textarea{color-scheme:${t.dark?"dark":"light"};font-family:inherit}
+        @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+      `}</style>
+
+      {tour&&me&&<TourModal t={t} onDone={()=>setTour(false)}/>}
+
+      {!me&&<AuthScreen users={users} onLogin={login} onReg={register} onForgot={handleForgot} t={t}/>}
+
+      {me&&<Vault
+        user={me} allUsers={users} onUpdUser={updUser} onLogout={logout}
+        onGoAdmin={()=>{}} notifs={notifs} theme={theme} setTheme={setTheme}
+        onQuestion={handleQuestion} globalPrices={globalPrices} onSetPrice={setPrice}
+        adminReqs={adminReqs} onApproveAdmin={approveAdmin} onRejectAdmin={rejectAdmin}
+        onAnswer={answerQ} onSend={sendRec} onDismiss={dismiss}
+      />}
+    </>
+  );
+}
+</script>
+
+  <!-- Bootstrap: runs AFTER all above elements exist in DOM -->
+  <script>
+  (function() {
+    function showErr(msg, stack) {
+      var d = document.getElementById('errdiv');
+      d.style.display = 'block';
+      d.textContent = msg + (stack ? '\n\n' + stack : '');
+      document.getElementById('loader').style.display = 'none';
+    }
+
+    try {
+      document.getElementById('lstatus').textContent = 'Compiling app...';
+
+      // Expose React hooks as globals so the JSX source can use them directly
+      var useState    = React.useState;
+      var useRef      = React.useRef;
+      var useEffect   = React.useEffect;
+      var useCallback = React.useCallback;
+      var useMemo     = React.useMemo;
+
+      // Read JSX source from the text/plain tag
+      var srcEl = document.getElementById('appsrc');
+      if (!srcEl) { showErr('Source element not found'); return; }
+      var jsxCode = srcEl.textContent;
+
+      // Compile JSX → JS using Babel
+      var result = Babel.transform(jsxCode, {
+        presets: [['react', { runtime: 'classic', pragma: 'React.createElement', pragmaFrag: 'React.Fragment' }]],
+        plugins: [],
+        filename: 'app.jsx'
+      });
+
+      document.getElementById('lstatus').textContent = 'Starting app...';
+
+      // Execute compiled code, capture the App function
+      // We inject the hook variables into scope via a wrapper function
+      var execFn = new Function(
+        'useState','useRef','useEffect','useCallback','useMemo',
+        result.code + '\nreturn App;'
+      );
+      var AppComponent = execFn(useState, useRef, useEffect, useCallback, useMemo);
+
+      // Mount React
+      var rootEl = document.getElementById('root');
+      var reactRoot = ReactDOM.createRoot(rootEl);
+      reactRoot.render(React.createElement(AppComponent));
+
+      // Hide loader
+      document.getElementById('loader').style.display = 'none';
+
+    } catch(e) {
+      showErr('Error: ' + e.message, e.stack);
+    }
+  })();
+  </script>
+
+</body>
+</html>
